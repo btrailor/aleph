@@ -9,3 +9,22 @@
 *.sym
 *.dsc
 *_desc_build
+
+# Development toolchain (large binary downloads)
+toolchain/
+aleph/
+
+# Build artifacts and temporary files
+"$OUTPUT_FILE"
+"\"$OUTPUT_FILE\""
+
+# Development environment files (tracked in development/ instead)
+docker-compose.yml
+Dockerfile
+build-*.sh
+setup-*.sh
+start-*.sh
+test-*.sh
+
+# macOS
+.DS_Store
