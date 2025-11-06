@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  aleph-dev:
+    build: .
+    container_name: aleph-dev
+    volumes:
+      - ./aleph:/aleph
+      - ./toolchain:/toolchain
+    working_dir: /aleph
+    stdin_open: true
+    tty: true
