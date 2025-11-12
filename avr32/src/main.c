@@ -44,6 +44,7 @@
 #include "flash.h"
 #include "font.h"
 #include "ftdi.h"
+#include "cdc.h"
 #include "global.h"
 #include "i2c.h"
 #include "init.h"
@@ -108,6 +109,19 @@ static void handler_FtdiDisconnect(s32 data) {
     event_post(&e);
 }
 
+static void handler_CdcConnect(s32 data) {
+  if(!launch) {
+    // print_dbg("\r\n got CDC monome device connection, saving flag for app launch");
+    ftdiConnect = 1; // reusing the ftdiConnect flag for now
+  }
+  cdc_setup();
+}
+static void handler_CdcDisconnect(s32 data) {
+    /// CDC disconnection - assume this is monome disconnect
+    event_t e = {.type = kEventMonomeDisconnect };
+    event_post(&e);
+}
+
 static void handler_MonomeConnect(s32 data) {
     // this just stores a flag to re-send connection event to app
     if (!launch) {
@@ -163,6 +177,8 @@ static inline void assign_main_event_handlers(void) {
     app_event_handlers[kEventSwitch7] = &dummy_handler;
     app_event_handlers[kEventFtdiConnect] = &handler_FtdiConnect;
     app_event_handlers[kEventFtdiDisconnect] = &handler_FtdiDisconnect;
+    app_event_handlers[kEventCdcConnect] = &handler_CdcConnect;
+    app_event_handlers[kEventCdcDisconnect] = &handler_CdcDisconnect;
     app_event_handlers[kEventMonomeConnect] = &handler_MonomeConnect;
     app_event_handlers[kEventMonomeDisconnect] = &dummy_handler;
     app_event_handlers[kEventMonomePoll] = &handler_MonomePoll;
