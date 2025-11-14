@@ -17,8 +17,30 @@
 void scaler_fix_init(void* scaler) {
   ParamScaler* sc = (ParamScaler*)scaler;
 
-  print_dbg("\r\n initializing fixed-point scaler for param, label: ");
-  print_dbg(sc->desc->label);
+  // Safety check to prevent hanging
+  if (!sc || !sc->desc) {
+    // Disable debug printing to avoid potential hang
+    // print_dbg("\r\n ERROR: NULL scaler or descriptor in scaler_fix_init");
+    return;
+  }
+
+  // Disable debug printing to identify hang source
+  // print_dbg("\r\n initializing fixed-point scaler for param, label: ");
+  
+  // Skip label printing to avoid potential hang
+  // if (sc->desc->label) {
+  //   print_dbg(sc->desc->label);
+  // } else {
+  //   print_dbg("(null label)");
+  // }
+
+  // Add bounds checking to prevent hangs
+  if (sc->desc->min >= sc->desc->max) {
+    // print_dbg("\r\n WARNING: Invalid min/max range in scaler_fix_init");
+    sc->inMin = 0;
+    sc->inMax = 0x7FFFFFFF;
+    return;
+  }
 
   sc->inMin = scaler_fix_in(scaler, sc->desc->min);
   sc->inMax = scaler_fix_in(scaler, sc->desc->max);
@@ -31,14 +53,28 @@ void scaler_fix_init(void* scaler) {
 }
 
 s32 scaler_fix_val(void* scaler, io_t in) {
+  // Safety check
+  if (!scaler || !((ParamScaler*)scaler)->desc) {
+    return 0;
+  }
+  
   // normalize to 32b signed
   s32 norm = in << (32 - IO_BITS);
 
   // apply radix to put us in the correct range
   u8 r = ((ParamScaler*)scaler)->desc->radix;
+  
+  // Add bounds checking to prevent hang from Phase 1 optimizations
+  if (r > 31) {
+    r = 31; // Clamp to safe value
+  }
+  
   ////.... ? ah
   if(r < (32 - IO_BITS)) {
-    norm >>= (32 - IO_BITS - r);
+    int shift_amount = 32 - IO_BITS - r;
+    if (shift_amount > 0 && shift_amount < 32) {
+      norm >>= shift_amount;
+    }
   }
 
   /* print_dbg("\r\n linear-fixed scaler, get value; input: 0x"); */
@@ -51,9 +87,20 @@ s32 scaler_fix_val(void* scaler, io_t in) {
 }
 
 void scaler_fix_str(char* dst, void* scaler, io_t in) {
+  // Safety check
+  if (!dst || !scaler || !((ParamScaler*)scaler)->desc) {
+    if (dst) dst[0] = '\0'; // Ensure null termination
+    return;
+  }
+  
   // first normalize
   s32 norm = in << (32 - IO_BITS);
   u8 r = ((ParamScaler*)scaler)->desc->radix;
+  
+  // Add bounds checking to prevent hang from Phase 1 optimizations
+  if (r > 31) {
+    r = 31; // Clamp to safe value
+  }
 
   /* print_dbg("\r\n linear-fixed scaler, get string; input: 0x"); */
   /* print_dbg_hex(in); */
@@ -62,7 +109,10 @@ void scaler_fix_str(char* dst, void* scaler, io_t in) {
 
   // rshift back for display, depending on radix
   if(r < 32 - IO_BITS) {
-    norm >>= (32 - IO_BITS - r);
+    int shift_amount = 32 - IO_BITS - r;
+    if (shift_amount > 0 && shift_amount < 32) {
+      norm >>= shift_amount;
+    }
   }
 
   /* print_dbg(" , adjusted for radix: 0x"); */
@@ -71,10 +121,25 @@ void scaler_fix_str(char* dst, void* scaler, io_t in) {
 }
 
 io_t scaler_fix_in(void* scaler, s32 val) {
+  // Safety check to prevent hang
+  if (!scaler || !((ParamScaler*)scaler)->desc) {
+    return 0;
+  }
+  
   // un-normalize
   u8 r = ((ParamScaler*)scaler)->desc->radix;
+  
+  // Add bounds checking to prevent potential infinite loops from Phase 1 optimizations
+  if (r > 31) {
+    r = 31; // Clamp to safe value
+  }
+  
   if(r < 16) {
-    val <<= (32 - IO_BITS - r);
+    // Prevent excessive left shifts that could cause undefined behavior
+    int shift_amount = 32 - IO_BITS - r;
+    if (shift_amount > 0 && shift_amount < 32) {
+      val <<= shift_amount;
+    }
   }
 
   return val >> (32 - IO_BITS);

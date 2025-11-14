@@ -21,6 +21,8 @@ include ../aleph_avr32_src.mk
 CSRCS += \
 	$(APP_DIR)/src/app_bees.c \
 	$(APP_DIR)/src/app_timers.c \
+	$(APP_DIR)/src/dynamic_network.c \
+	$(APP_DIR)/src/dynamic_flash_buffer.c \
 	$(APP_DIR)/src/files.c \
 	$(APP_DIR)/src/flash_bees.c \
 	$(APP_DIR)/src/handler.c \
@@ -52,6 +54,7 @@ CSRCS += \
 	$(APP_DIR)/src/ops/op_bits.c \
 	$(APP_DIR)/src/ops/op_cascades.c \
 	$(APP_DIR)/src/ops/op_change.c \
+	$(APP_DIR)/src/ops/op_ckdiv.c \
 	$(APP_DIR)/src/ops/op_delay.c \
 	$(APP_DIR)/src/ops/op_div.c \
 	$(APP_DIR)/src/ops/op_divr.c \
@@ -65,7 +68,9 @@ CSRCS += \
 	$(APP_DIR)/src/ops/op_iter.c \
 	$(APP_DIR)/src/ops/op_kria.c \
 	$(APP_DIR)/src/ops/op_life_classic.c \
+	$(APP_DIR)/src/ops/op_linlin.c \
 	$(APP_DIR)/src/ops/op_list2.c \
+	$(APP_DIR)/src/ops/op_list4.c \
 	$(APP_DIR)/src/ops/op_list8.c \
 	$(APP_DIR)/src/ops/op_list16.c \
 	$(APP_DIR)/src/ops/op_logic.c \
@@ -149,6 +154,10 @@ ASFLAGS +=
 
 # extra flags for compiling
 # CFLAGS += --verbose
+# Enable dynamic network allocation
+CFLAGS += -DDYNAMIC_NETWORK_ENABLED
+# Enable dynamic flash buffer allocation  
+CFLAGS += -DDYNAMIC_FLASH_BUFFER_ENABLED
 
 # debug:
 # OPTIMIZATION = -Og

@@ -57,7 +57,6 @@ void scaler_integrator_str(char* dst, void* scaler,  io_t in) {
 void scaler_integrator_init(void* scaler) {
   ParamScaler* sc = (ParamScaler*)scaler;
 
-
   print_dbg("\r\n initializing integrator scaler for param, label: ");
   print_dbg(sc->desc->label);
 
@@ -68,21 +67,26 @@ void scaler_integrator_init(void* scaler) {
     print_dbg_ulong(sc->desc->type);
   }
   
+  print_dbg("\r\n [DEBUG] about to check initFlag");
   // init flag for static data
   if(initFlag) { 
-    ;;
+    print_dbg("\r\n [DEBUG] initFlag already set, skipping static init");
   } else {
+    print_dbg("\r\n [DEBUG] setting initFlag and initializing static data");
     initFlag = 1;
 
+    print_dbg("\r\n [DEBUG] about to call scaler_get_nv_data");
     // assign
     tabVal = scaler_get_nv_data(eParamTypeIntegrator);
+    print_dbg("\r\n [DEBUG] scaler_get_nv_data returned successfully");
     //    tabRep = scaler_get_nv_rep(eParamTypeIntegrator);
   }
 
+  print_dbg("\r\n [DEBUG] setting inMin and inMax");
   sc->inMin = 0;
   sc->inMax = (tabSize - 1) << inRshift;
 
-
+  print_dbg("\r\n [DEBUG] scaler_integrator_init completed successfully");
   //// FIXME: add tuning functions....
   /// here, that would mean adjusting for actual samplerate. 
   /// table data assumes 48k.

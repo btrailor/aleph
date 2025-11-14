@@ -2,6 +2,7 @@
 #include "region.h"
 #include "region_extra.h"
 #include "screen.h"
+#include "memory.h"
 
 // bees
 #include "app_timers.h"
@@ -12,6 +13,8 @@
 #include "print_funcs.h"
 #include "pickle.h"
 #include "op_bignum.h"
+
+// optimization functionality is built into this operator
 
 
 //-------------------------------------------------
@@ -101,20 +104,17 @@ void op_bignum_init(void* op) {
   bignum->x = 0;
   bignum->y = 0;
 
-  // init graphics
-  /*.. this is sort of retarded, 
-  doing stuff normally accomplished in region_alloc() or in static init,
-  but doing a dumb memory hack on it to share a tmp data space between instances.
-  */  
+  // init graphics - OPTIMIZED: Dynamic allocation on demand
   bignum->reg.dirty = 0;
   bignum->reg.x = 0;
   bignum->reg.y = 0;
   bignum->reg.w = OP_BIGNUM_PX_W;
   bignum->reg.h = OP_BIGNUM_PX_H;
   bignum->reg.len = OP_BIGNUM_GFX_BYTES;
-  bignum->reg.data = (u8*) (bignum->regData);
-
-  region_fill(&(bignum->reg), 0);
+  
+  // Initialize graphics buffer pointer to NULL (allocate on enable)
+  bignum->regData = NULL;
+  bignum->reg.data = NULL;
 }
 
 
@@ -125,6 +125,14 @@ void op_bignum_deinit(void* op) {
     op_gfx_disable();
     op_bignum_unset_timer(bignum);
   }
+  
+  // OPTIMIZED: Free dynamic graphics buffer if allocated
+  if(bignum->regData != NULL) {
+    free_mem((heap_t)bignum->regData);
+    bignum->regData = NULL;
+    bignum->reg.data = NULL;
+    print_dbg("\r\n[BIGNUM] Freed graphics buffer in deinit");
+  }
 }
 
 //-------------------------------------------------
@@ -134,8 +142,21 @@ void op_bignum_deinit(void* op) {
 void op_bignum_in_enable(op_bignum_t* bignum, const io_t v  ) {
   if(v > 0) {
     if(bignum->enable > 0) {
-      ;;
+      ;; // Already enabled
     } else {
+      // OPTIMIZED: Allocate graphics buffer on enable
+      if(bignum->regData == NULL) {
+        bignum->regData = (u8*)alloc_mem(OP_BIGNUM_GFX_BYTES);
+        if(bignum->regData == NULL) {
+          print_dbg("\r\n[BIGNUM] Failed to allocate graphics buffer");
+          return; // Cannot enable without graphics buffer
+        }
+        bignum->reg.data = bignum->regData;
+        // Clear the buffer
+        region_fill(&(bignum->reg), 0);
+        print_dbg("\r\n[BIGNUM] Allocated graphics buffer");
+      }
+      
       op_gfx_enable();
       bignum->enable = 1;
       op_bignum_set_timer(bignum);
@@ -146,8 +167,16 @@ void op_bignum_in_enable(op_bignum_t* bignum, const io_t v  ) {
       op_gfx_disable();
       bignum->enable = 0;
       op_bignum_unset_timer(bignum);
+      
+      // OPTIMIZED: Free graphics buffer on disable
+      if(bignum->regData != NULL) {
+        free_mem((heap_t)bignum->regData);
+        bignum->regData = NULL;
+        bignum->reg.data = NULL;
+        print_dbg("\r\n[BIGNUM] Freed graphics buffer");
+      }
     } else {
-      ;;
+      ;; // Already disabled
     }
   }
 }
@@ -165,30 +194,40 @@ void op_bignum_in_period(op_bignum_t* bignum, const io_t v) {
 // input val
 void op_bignum_in_val(op_bignum_t* bignum, const io_t v) {
   bignum->val = v;
-  op_bignum_redraw(bignum);
+  // OPTIMIZED: Only redraw if graphics buffer is allocated
+  if(bignum->regData != NULL) {
+    op_bignum_redraw(bignum);
+  }
 }
 
 // input x position
 void op_bignum_in_x(op_bignum_t* bignum, const io_t v) {
-  // blank so we don't leave a trail
-  region_fill(&(bignum->reg), 0);
   if (v > OP_BIGNUM_X_MAX) {
     bignum->x = bignum->reg.x = OP_BIGNUM_X_MAX; 
   } else {		
     bignum->x = bignum->reg.x = v;
   }
-  op_bignum_redraw(bignum);
+  
+  // OPTIMIZED: Only perform graphics operations if buffer is allocated
+  if(bignum->regData != NULL) {
+    // blank so we don't leave a trail
+    region_fill(&(bignum->reg), 0);
+    op_bignum_redraw(bignum);
+  }
 }
 
 // input y position
 void op_bignum_in_y(op_bignum_t* bignum, const io_t v) {
-  // blank so we don't leave a trail
   if (v > OP_BIGNUM_Y_MAX) {
     bignum->y = bignum->reg.y = OP_BIGNUM_Y_MAX;
   } else {		
     bignum->y = bignum->reg.y = v;
   }
-  op_bignum_redraw(bignum);
+  
+  // OPTIMIZED: Only redraw if graphics buffer is allocated
+  if(bignum->regData != NULL) {
+    op_bignum_redraw(bignum);
+  }
 }
 
 
@@ -230,8 +269,18 @@ u8* op_bignum_unpickle(op_bignum_t* bignum, const u8* src) {
   bignum->reg.y = bignum->y;
 
   if(bignum->enable) {
+    // OPTIMIZED: Allocate graphics buffer for enabled operators during unpickle
+    if(bignum->regData == NULL) {
+      bignum->regData = (u8*)alloc_mem(OP_BIGNUM_GFX_BYTES);
+      if(bignum->regData != NULL) {
+        bignum->reg.data = bignum->regData;
+        region_fill(&(bignum->reg), 0);
+        print_dbg("\r\n[BIGNUM] Allocated graphics buffer during unpickle");
+      }
+    }
+    
     op_bignum_set_timer(bignum);
-    op_bignum_redraw(bignum);
+    op_bignum_redraw(bignum);  // Safe to call - redraw checks for buffer
     op_gfx_enable();
   }
   
@@ -242,6 +291,9 @@ u8* op_bignum_unpickle(op_bignum_t* bignum, const u8* src) {
 void op_bignum_redraw(op_bignum_t* bignum) {
 
   if(bignum->enable <= 0) { return; }
+  
+  // OPTIMIZED: Only draw if graphics buffer is allocated
+  if(bignum->regData == NULL) { return; }
 
   // print value to text buffer
   op_print(tmpStr, bignum->val);

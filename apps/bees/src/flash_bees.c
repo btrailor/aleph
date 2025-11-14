@@ -14,12 +14,18 @@
 #include "flash_bees.h"
 #include "param_scaler.h"
 #include "scene.h"
+#include "dynamic_flash_buffer.h"
 
+#ifdef DYNAMIC_FLASH_BUFFER_ENABLED
+// Dynamic flash buffer system - no static allocation needed
+static dynamic_flash_buffer_t* flash_buffer = NULL;
+#else
 // buffer for scaler data in flash init
 /// FIXME: this would be a temp buffer if we had malloc.
 static s32* scalerBuf;
 // max size of data in single scaler file
 static const u32 scalerMaxValues = 1024;
+#endif
 
 
 // read default scene data to global buffer
@@ -65,26 +71,49 @@ void flash_init_scaler_data(void) {
       path = scaler_get_data_path(p);
       print_dbg("\r\n writing scaler data to flash: ");
       print_dbg(path);
+#ifdef DYNAMIC_FLASH_BUFFER_ENABLED
+      s32* buffer = dynamic_flash_buffer_get();
+      if (buffer == NULL) {
+        print_dbg("\r\n ERROR: Failed to get dynamic flash buffer");
+        continue;
+      }
+      files_load_scaler_name(path, buffer, b >> 2);
+#else
       files_load_scaler_name(path, scalerBuf, scalerMaxValues);
+#endif
 
       /// TEST: print values from file
       /* print_dbg("\r\n values read from file: "); */
       /* for(u32 i=0; i<(b>>2); ++i) { */
       /* 	print_dbg("\r\n 0x"); */
+#ifdef DYNAMIC_FLASH_BUFFER_ENABLED
+      /* 	print_dbg_hex(buffer[i]); */
+#else
       /* 	print_dbg_hex(scalerBuf[i]); */
+#endif
       /* } */
       /* print_dbg("\r\n first/last values read from file: "); */
       /* print_dbg("\r\n 0x"); */
+#ifdef DYNAMIC_FLASH_BUFFER_ENABLED
+      /* print_dbg_hex(buffer[0]); */
+      /* print_dbg("\r\n 0x"); */
+      /* print_dbg_hex(buffer[ (b >> 2) - 1]); */
+#else
       /* print_dbg_hex(scalerBuf[0]); */
       /* print_dbg("\r\n 0x"); */
       /* print_dbg_hex(scalerBuf[ (b >> 2) - 1]); */
+#endif
 
       //      dst = (void*)(&( ((beesFlashData*)(flash_app_data()))->scalerBytes) + scaler_get_data_offset(p));
       //      dst = scalerBytes + scaler_get_data_offset(p);
       dst = (void*)scaler_get_nv_data(p);
       print_dbg("\r\n writing scaler val data to flash at address: 0x");
       print_dbg_hex((u32)dst);
+#ifdef DYNAMIC_FLASH_BUFFER_ENABLED
+      flashc_memcpy( dst, (void*)buffer, b, true);
+#else
       flashc_memcpy( dst, (void*)scalerBuf, b, true);
+#endif
 
       /// TEST: print values from flash
       /* print_dbg("\r\n values in flash after write: "); */
@@ -105,26 +134,49 @@ void flash_init_scaler_data(void) {
       path = scaler_get_rep_path(p);
       print_dbg("\r\n writing scaler data to flash: ");
       print_dbg(path);
+#ifdef DYNAMIC_FLASH_BUFFER_ENABLED
+      s32* buffer = dynamic_flash_buffer_get();
+      if (buffer == NULL) {
+        print_dbg("\r\n ERROR: Failed to get dynamic flash buffer for rep data");
+        continue;
+      }
+      files_load_scaler_name(path, buffer, b >> 2);
+#else
       files_load_scaler_name(path, scalerBuf, scalerMaxValues);
+#endif
 
       /// TEST: print values from file
       /* print_dbg("\r\n values read from file: "); */
       /* for(u32 i=0; i<(b>>2); ++i) { */
       /* 	print_dbg("\r\n 0x"); */
+#ifdef DYNAMIC_FLASH_BUFFER_ENABLED
+      /* 	print_dbg_hex(buffer[i]); */
+#else
       /* 	print_dbg_hex(scalerBuf[i]); */
+#endif
       /* } */
       /* print_dbg("\r\n first/last values read from file: "); */
       /* print_dbg("\r\n 0x"); */
+#ifdef DYNAMIC_FLASH_BUFFER_ENABLED
+      /* print_dbg_hex(buffer[0]); */
+      /* print_dbg("\r\n 0x"); */
+      /* print_dbg_hex(buffer[ (b >> 2) - 1]); */
+#else
       /* print_dbg_hex(scalerBuf[0]); */
       /* print_dbg("\r\n 0x"); */
       /* print_dbg_hex(scalerBuf[ (b >> 2) - 1]); */
+#endif
 
       //      dst = (void*)(&( ((beesFlashData*)(flash_app_data()))->scalerBytes) + scaler_get_rep_offset(p));
       //      dst = scalerBytes + scaler_get_rep_offset(p);
       dst = (void*)scaler_get_nv_rep(p);
       print_dbg("\r\n writing scaler rep data to flash at address: 0x");
       print_dbg_hex((u32)dst);
+#ifdef DYNAMIC_FLASH_BUFFER_ENABLED
+      flashc_memcpy( dst, (void*)buffer, b, true);
+#else
       flashc_memcpy( dst, (void*)scalerBuf, b, true);
+#endif
 
       /// TEST: print values from flash
       /* print_dbg("\r\n values in flash after write: "); */
@@ -146,5 +198,10 @@ void flash_init_scaler_data(void) {
 
 // initialize buffer
 void flash_bees_init(void) {
+#ifdef DYNAMIC_FLASH_BUFFER_ENABLED
+  dynamic_flash_buffer_init();
+  print_dbg("\r\n Dynamic flash buffer initialized successfully");
+#else
   scalerBuf = (s32*)alloc_mem(scalerMaxValues * 4);
+#endif
 }

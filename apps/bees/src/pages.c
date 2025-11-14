@@ -4,7 +4,7 @@
   aleph
 */
 
-#ifdef ARCH_AVR32
+#if defined(ARCH_AVR32) || defined(BEEKEEP)
 #include "print_funcs.h"
 #include "encoders.h"
 #endif

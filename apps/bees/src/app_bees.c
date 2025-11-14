@@ -56,6 +56,7 @@ void app_init(void) {
   // should be before preset and op init
   print_dbg("\r\n initialise mempools...");
   initBigMemPool();
+  initMediumMemPool();
   initSmallMemPool();
 
   print_dbg("\r\n preset_init...");  

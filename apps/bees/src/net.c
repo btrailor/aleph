@@ -24,6 +24,7 @@
 // bees
 #include "net.h"
 #include "net_protected.h"
+#include "dynamic_network.h"
 #include "op.h" 
 #include "op_derived.h"
 #include "op_gfx.h"
@@ -215,9 +216,40 @@ static const u8* inode_unpickle(const u8* src, inode_t* in) {
 //==================================================
 //========= public functions
 
-// initialize network at pre-allocated memory
+// initialize network with dynamic allocation
 void net_init(void) {
   u32 i;
+  
+#ifdef DYNAMIC_NETWORK_ENABLED
+  // Initialize dynamic network
+  net = dynamic_network_init();
+  if (net == NULL) {
+    print_dbg("\r\n CRITICAL: Failed to initialize dynamic network!");
+    return;
+  }
+  
+  print_dbg("\r\n initialized dynamic ctlnet");
+  print_dbg("\r\n  - ops capacity: ");
+  print_dbg_ulong(net->opsCapacity);
+  print_dbg("\r\n  - ins capacity: ");
+  print_dbg_ulong(net->insCapacity);
+  print_dbg("\r\n  - outs capacity: ");
+  print_dbg_ulong(net->outsCapacity);
+  print_dbg("\r\n  - params capacity: ");
+  print_dbg_ulong(net->paramsCapacity);
+  
+  print_dbg("\r\n memory footprint: ");
+  print_dbg_hex(dynamic_network_memory_usage(net));
+  
+  // Initialize all allocated I/O nodes  
+  for(i=0; i<net->insCapacity; i++) {
+    net_init_inode(i);
+  }
+  for(i=0; i<net->outsCapacity; i++) {
+    net_init_onode(i);
+  }
+#else
+  // Original fixed allocation
   net = (ctlnet_t*)alloc_mem(sizeof(ctlnet_t));
 
   net->numOps = 0;
@@ -235,8 +267,9 @@ void net_init(void) {
 
   print_dbg("\r\n initialized ctlnet, byte count: ");
   print_dbg_hex(sizeof(ctlnet_t));
+#endif
+
   add_sys_ops();
-  // ???
   netActive = 1;
 }
 
@@ -443,9 +476,19 @@ s16 net_add_op(op_id_t opId) {
   print_dbg("\r\n adding operator; old input count: ");
   print_dbg_ulong(numInsSave);
 
+#ifdef DYNAMIC_NETWORK_ENABLED
+  // Check if we need to expand the ops array
+  if (net->numOps >= net->opsCapacity) {
+    if (dynamic_network_expand_ops(net) != 0) {
+      print_dbg("\r\n failed to expand ops array");
+      return -1;
+    }
+  }
+#else
   if (net->numOps >= NET_OPS_MAX) {
     return -1;
   }
+#endif
   print_dbg(" , op class: ");
   print_dbg_ulong(opId);
   print_dbg(" , size: ");
@@ -470,6 +513,27 @@ s16 net_add_op(op_id_t opId) {
   ins = op->numInputs;
   outs = op->numOutputs;
 
+#ifdef DYNAMIC_NETWORK_ENABLED
+  // Check if we need to expand inputs array
+  if (ins > (net->insCapacity - net->numIns)) {
+    if (dynamic_network_expand_ins(net, net->numIns + ins) != 0) {
+      print_dbg("\r\n failed to expand inputs array");
+      op_deinit(op);
+      freeOp((u8*)op);
+      return -1;
+    }
+  }
+
+  // Check if we need to expand outputs array
+  if (outs > (net->outsCapacity - net->numOuts)) {
+    if (dynamic_network_expand_outs(net, net->numOuts + outs) != 0) {
+      print_dbg("\r\n failed to expand outputs array");
+      op_deinit(op);
+      freeOp((u8*)op);
+      return -1;
+    }
+  }
+#else
   if (ins > (NET_INS_MAX - net->numIns)) {
     print_dbg("\r\n op creation failed; too many inputs in network.");
     op_deinit(op);
@@ -483,6 +547,7 @@ s16 net_add_op(op_id_t opId) {
     freeOp((u8*)op);
     return -1;
   }
+#endif
 
   // add op pointer to list
   net->ops[net->numOps] = op;

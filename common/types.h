@@ -2,6 +2,7 @@
 #define _ALEPH_TYPES_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #ifdef ARCH_AVR32
 #include "compiler.h"
@@ -47,7 +48,12 @@ typedef int16_t fract16;
 
 #ifdef BEEKEEP
 #ifndef __cplusplus
+#ifndef __bool_true_false_are_defined
 typedef unsigned char bool;
+#define true 1
+#define false 0
+#define __bool_true_false_are_defined 1
+#endif
 #endif
 #endif
 

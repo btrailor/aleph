@@ -1,0 +1,56 @@
+# AVR32 Toolchain Docker Build System
+# Build and use native AVR32 toolchain in Docker for true BEES compilation
+
+FROM ubuntu:20.04
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install dependencies for AVR32 toolchain build
+RUN apt-get update && apt-get install -y \
+    curl \
+    flex \
+    bison \
+    libgmp3-dev \
+    libmpfr-dev \
+    libmpc-dev \
+    autoconf \
+    build-essential \
+    libncurses5-dev \
+    texinfo \
+    git \
+    make \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /workspace
+
+# Create AVR32 toolchain build environment
+RUN mkdir -p /avr32-tools
+
+# Set environment variables for AVR32 build
+ENV PREFIX=/avr32-tools
+ENV PATH=${PREFIX}/bin:${PATH}
+
+# Copy AVR32 toolchain source
+COPY avr32-toolchain /workspace/avr32-toolchain
+
+# Build the AVR32 toolchain
+WORKDIR /workspace/avr32-toolchain
+RUN make clean || true
+RUN PREFIX=/avr32-tools make install-cross
+
+# Verify toolchain installation
+RUN ls -la /avr32-tools/bin/
+RUN /avr32-tools/bin/avr32-gcc --version
+
+# Set up BEES build environment
+WORKDIR /workspace
+ENV AVR32_CC=/avr32-tools/bin/avr32-gcc
+ENV AVR32_OBJCOPY=/avr32-tools/bin/avr32-objcopy
+ENV AVR32_SIZE=/avr32-tools/bin/avr32-size
+
+# Default command
+CMD ["/bin/bash"]

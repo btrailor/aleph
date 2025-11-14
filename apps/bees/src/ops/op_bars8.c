@@ -1,6 +1,7 @@
 // avr32-lib
 #include "region.h"
 #include "screen.h"
+#include "memory.h"
 
 // bees
 #include "app_timers.h"
@@ -11,6 +12,8 @@
 #include "print_funcs.h"
 #include "pickle.h"
 #include "op_bars8.h"
+
+// optimization functionality is built into this operator
 
 
 //-------------------------------------------------
@@ -116,20 +119,17 @@ void op_bars8_init(void* op) {
   bars8->g = 0;
   bars8->h = 0;
 
-  // init graphics
-  /*.. this is sort of retarded, 
-  doing stuff normally accomplished in region_alloc() or in static init,
-  but doing a dumb memory hack on it to share a tmp data space between instances.
-  */  
+  // init graphics - OPTIMIZED: Dynamic allocation on demand
   bars8->reg.dirty = 0;
   bars8->reg.x = 0;
   bars8->reg.y = 0;
   bars8->reg.w = OP_BARS8_PX_W;
   bars8->reg.h = OP_BARS8_PX_H;
   bars8->reg.len = OP_BARS8_GFX_BYTES;
-  bars8->reg.data = (u8*) (bars8->regData);
-
-  region_fill(&(bars8->reg), 0);
+  
+  // Initialize graphics buffer pointer to NULL (allocate on enable)
+  bars8->regData = NULL;
+  bars8->reg.data = NULL;
 }
 
 
@@ -140,6 +140,14 @@ void op_bars8_deinit(void* op) {
     op_gfx_disable();
     op_bars8_unset_timer(bars8);
   }
+  
+  // OPTIMIZED: Free dynamic graphics buffer if allocated
+  if(bars8->regData != NULL) {
+    free_mem((heap_t)bars8->regData);
+    bars8->regData = NULL;
+    bars8->reg.data = NULL;
+    print_dbg("\r\n[BARS8] Freed graphics buffer in deinit");
+  }
 }
 
 //-------------------------------------------------
@@ -149,8 +157,21 @@ void op_bars8_deinit(void* op) {
 void op_bars8_in_enable(op_bars8_t* bars8, const io_t v  ) {
   if(v > 0) {
     if(bars8->enable > 0) {
-      ;;
+      ;; // Already enabled
     } else {
+      // OPTIMIZED: Allocate graphics buffer on enable
+      if(bars8->regData == NULL) {
+        bars8->regData = (u8*)alloc_mem(OP_BARS8_GFX_BYTES);
+        if(bars8->regData == NULL) {
+          print_dbg("\r\n[BARS8] Failed to allocate graphics buffer");
+          return; // Cannot enable without graphics buffer
+        }
+        bars8->reg.data = bars8->regData;
+        // Clear the buffer
+        region_fill(&(bars8->reg), 0);
+        print_dbg("\r\n[BARS8] Allocated graphics buffer");
+      }
+      
       op_gfx_enable();
       bars8->enable = 1;
       op_bars8_set_timer(bars8);
@@ -161,8 +182,16 @@ void op_bars8_in_enable(op_bars8_t* bars8, const io_t v  ) {
       op_gfx_disable();
       bars8->enable = 0;
       op_bars8_unset_timer(bars8);
+      
+      // OPTIMIZED: Free graphics buffer on disable
+      if(bars8->regData != NULL) {
+        free_mem((heap_t)bars8->regData);
+        bars8->regData = NULL;
+        bars8->reg.data = NULL;
+        print_dbg("\r\n[BARS8] Freed graphics buffer");
+      }
     } else {
-      ;;
+      ;; // Already disabled
     }
   }
 }
@@ -186,56 +215,59 @@ void op_bars8_in_a(op_bars8_t* bars8, const io_t v) {
   if(v < 0) { bars8->a = 0; }
   else if(v > 128) { bars8->a = 128; }
   else { bars8->a = v; }
-  op_bars8_redraw(bars8);
+  // OPTIMIZED: Only redraw if graphics buffer is allocated
+  if(bars8->regData != NULL) {
+    op_bars8_redraw(bars8);
+  }
 }
 
 void op_bars8_in_b(op_bars8_t* bars8, const io_t v) {
   if(v < 0) { bars8->b = 0; }
   else if(v > 128) { bars8->b = 128; }
   else { bars8->b = v; }
-  op_bars8_redraw(bars8);
+  if(bars8->regData != NULL) { op_bars8_redraw(bars8); }
 }
 
 void op_bars8_in_c(op_bars8_t* bars8, const io_t v) {
   if(v < 0) { bars8->c = 0; }
   else if(v > 128) { bars8->c = 128; }
   else { bars8->c = v; }
-  op_bars8_redraw(bars8);
+  if(bars8->regData != NULL) { op_bars8_redraw(bars8); }
 }
 
 void op_bars8_in_d(op_bars8_t* bars8, const io_t v) {
   if(v < 0) { bars8->d = 0; }
   else if(v > 128) { bars8->d = 128; }
   else { bars8->d = v; }
-  op_bars8_redraw(bars8);
+  if(bars8->regData != NULL) { op_bars8_redraw(bars8); }
 }
 
 void op_bars8_in_e(op_bars8_t* bars8, const io_t v) {
   if(v < 0) { bars8->e = 0; }
   else if(v > 128) { bars8->e = 128; }
   else { bars8->e = v; }
-  op_bars8_redraw(bars8);
+  if(bars8->regData != NULL) { op_bars8_redraw(bars8); }
 }
 
 void op_bars8_in_f(op_bars8_t* bars8, const io_t v) {
   if(v < 0) { bars8->f = 0; }
   else if(v > 128) { bars8->f = 128; }
   else { bars8->f = v; }
-  op_bars8_redraw(bars8);
+  if(bars8->regData != NULL) { op_bars8_redraw(bars8); }
 }
 
 void op_bars8_in_g(op_bars8_t* bars8, const io_t v) {
   if(v < 0) { bars8->g = 0; }
   else if(v > 128) { bars8->g = 128; }
   else { bars8->g = v; }
-  op_bars8_redraw(bars8);
+  if(bars8->regData != NULL) { op_bars8_redraw(bars8); }
 }
 
 void op_bars8_in_h(op_bars8_t* bars8, const io_t v) {
   if(v < 0) { bars8->h = 0; }
   else if(v > 128) { bars8->h = 128; }
   else { bars8->h = v; }
-  op_bars8_redraw(bars8);
+  if(bars8->regData != NULL) { op_bars8_redraw(bars8); }
 }
 
 // poll event handler
@@ -284,7 +316,17 @@ u8* op_bars8_unpickle(op_bars8_t* bars8, const u8* src) {
   src = unpickle_io(src, (u32*)&(bars8->h));
 
   if(bars8->enable == 1) {
-      op_bars8_redraw(bars8);
+      // OPTIMIZED: Allocate graphics buffer for enabled operators during unpickle
+      if(bars8->regData == NULL) {
+        bars8->regData = (u8*)alloc_mem(OP_BARS8_GFX_BYTES);
+        if(bars8->regData != NULL) {
+          bars8->reg.data = bars8->regData;
+          region_fill(&(bars8->reg), 0);
+          print_dbg("\r\n[BARS8] Allocated graphics buffer during unpickle");
+        }
+      }
+      
+      op_bars8_redraw(bars8);  // Safe to call - redraw checks for buffer
       op_gfx_enable();
       op_bars8_set_timer(bars8);
   }
@@ -294,6 +336,9 @@ u8* op_bars8_unpickle(op_bars8_t* bars8, const u8* src) {
 // redraw with current state
 void op_bars8_redraw(op_bars8_t* bars8) {
   if(bars8->enable <= 0) { return; }
+  
+  // OPTIMIZED: Only draw if graphics buffer is allocated
+  if(bars8->regData == NULL) { return; }
 
   u8 i;
 

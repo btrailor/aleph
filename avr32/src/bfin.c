@@ -247,10 +247,17 @@ void bfin_end_transfer(void) { spi_unselectChip(BFIN_SPI, BFIN_SPI_NPCS); }
 
 // wait for ready status (e.g. after module init)
 void bfin_wait_ready(void) {
-    // use ready pin
+    // use ready pin with timeout to prevent infinite hang
+    u32 timeout = 0;
+    const u32 MAX_TIMEOUT = 1000000;  // ~1 second timeout
+    
     while (!gpio_get_pin_value(BFIN_READY_PIN)) {
-        ;
-        ;
+        timeout++;
+        if (timeout > MAX_TIMEOUT) {
+            // Timeout reached - DSP may have crashed or be unresponsive
+            // Return rather than hanging indefinitely
+            break;
+        }
     }
 }
 

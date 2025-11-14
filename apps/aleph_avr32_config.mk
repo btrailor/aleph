@@ -32,8 +32,14 @@ TARGET = aleph-$(APP).elf
 LINKER_SCRIPT = $(APP_DIR)/aleph-$(APP).lds
 
 # AVR32 options for debugging. By default the common Makefile.in will
-# add -g3.
-DBGFLAGS =
+# add -g3. Override to prevent massive debug info sections.
+ifdef R
+  DBGFLAGS = 
+  BUILD_DEBUG_LEVEL = 0
+else
+  DBGFLAGS = 
+  BUILD_DEBUG_LEVEL = 0
+endif
 
 # optimization level
 OPTIMIZATION = -O3

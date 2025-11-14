@@ -18,6 +18,19 @@
 #include "module_common.h"
 #include "net.h"
 #include "op.h"
+
+// Compatibility macros for dynamic vs static allocation
+#ifdef DYNAMIC_NETWORK_ENABLED
+  #define NET_OPS_CAPACITY(net)    (net->opsCapacity)
+  #define NET_INS_CAPACITY(net)    (net->insCapacity)
+  #define NET_OUTS_CAPACITY(net)   (net->outsCapacity)
+  #define NET_PARAMS_CAPACITY(net) (net->paramsCapacity)
+#else
+  #define NET_OPS_CAPACITY(net)    NET_OPS_MAX
+  #define NET_INS_CAPACITY(net)    NET_INS_MAX
+  #define NET_OUTS_CAPACITY(net)   NET_OUTS_MAX
+  #define NET_PARAMS_CAPACITY(net) NET_PARAMS_MAX
+#endif
 #include "op_derived.h"
 #include "param_scaler.h"
 #include "types.h"
@@ -55,6 +68,36 @@ typedef struct _pnode {
 
 
 //! big old class for the network
+#ifdef DYNAMIC_NETWORK_ENABLED
+// Use dynamic allocation for network arrays
+typedef struct _ctlnet {
+  //!  op pointers (dynamic)
+  op_t** ops;
+  //! number of instantiated operators
+  u16 numOps;
+  //! number of instantiated inputs
+  u16 numIns;
+  //! number of instantiated outputs
+  u16 numOuts;
+  //! number of instantiated params
+  u16 numParams;
+  
+  //! allocated capacities
+  u16 opsCapacity;
+  u16 insCapacity;
+  u16 outsCapacity;
+  u16 paramsCapacity;
+
+  //! inputs (dynamic)
+  inode_t* ins;
+  //! outputs (dynamic)
+  onode_t* outs;
+  //! DSP params (dynamic)
+  pnode_t* params;
+
+} ctlnet_t;
+#else
+// Original fixed allocation for compatibility
 typedef struct _ctlnet {
   //!  op pointers
   op_t * ops[NET_OPS_MAX];
@@ -75,6 +118,12 @@ typedef struct _ctlnet {
   pnode_t params[NET_PARAMS_MAX];
 
 } ctlnet_t;
+#endif
+
+// Include dynamic network functions after struct definitions
+#ifdef DYNAMIC_NETWORK_ENABLED
+#include "dynamic_network.h"
+#endif
 
 ////! external variables
 

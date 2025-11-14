@@ -19,6 +19,7 @@
 
 // aleph avr32
 #include "app.h"
+#include "adc.h"
 #include "adc_poll.h"
 #include "control.h"
 #include "encoders.h"
@@ -133,7 +134,7 @@ static void monome_poll_timer_callback(void* obj) {
   // UHC callback spawns appropriate events
 #if BEEKEEP
 #else
-  monome_read_transport();
+  ftdi_read();
 #endif
 }
 

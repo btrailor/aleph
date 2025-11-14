@@ -52,6 +52,8 @@ extern u8 files_load_scene_path(const char* name);
 extern void files_store_scene(u8 idx);
 // store scene by filename
 extern void files_store_scene_name(const char* name /*, u8 ext */);
+// store scene by filename with version override
+extern void files_store_scene_name_version(const char* name, u8 maj, u8 min, u16 rev);
 
 
 //----- scalers

@@ -45,8 +45,8 @@ typedef struct op_bars8_struct {
   // drawing region handler
   region reg;
   // drawing region data.
-  /// FIXME: this should probly be alloc'd/freed from heap.
-  u8 regData[OP_BARS8_GFX_BYTES];
+  /// OPTIMIZED: Dynamic allocation - allocated on enable, freed on disable
+  u8* regData;  // Changed from static array to dynamic pointer
   // timer data
   softTimer_t timer;
   // polled operator superclass

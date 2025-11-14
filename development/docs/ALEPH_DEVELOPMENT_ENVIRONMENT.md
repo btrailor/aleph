@@ -4,67 +4,120 @@
 
 ## Overview
 
-The Aleph development environment uses a **dual-container architecture** to support both processor architectures in the Aleph hardware:
+The Aleph development environment supports both processor architectures in the Aleph hardware:
 
-- **AVR32 Container**: Firmware development (AT32UC3A0512)
-- **Blackfin Container**: DSP module development (ADSP-BF533)
+- **AVR32 Development**: Firmware development (AT32UC3A0512)
+- **Blackfin Development**: DSP module development (ADSP-BF533)
 
-This setup provides **real hardware compilation** with official toolchains from both Atmel and Analog Devices.
+**Current Setup**: **Unified Container Architecture** using `aleph-builder` image with both toolchains.
+
+This provides **real hardware compilation** with official toolchains from both Atmel and Analog Devices in a single container.
 
 ## Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Host System (macOS)                     │
-│  ┌─────────────────────────┐  ┌─────────────────────────────┐ │
-│  │    AVR32 Container      │  │    Blackfin Container       │ │
-│  │   (ARM64 Ubuntu)        │  │   (x86_64 Ubuntu 20.04)    │ │
-│  │                         │  │                             │ │
-│  │ ┌─────────────────────┐ │  │ ┌─────────────────────────┐ │ │
-│  │ │  AVR32 Toolchain    │ │  │ │  Blackfin Toolchain     │ │ │
-│  │ │  GCC 4.4.7          │ │  │ │  ADI 2014R1-RC2         │ │ │
-│  │ │  Binutils 2.23.1    │ │  │ │  GCC 4.3.5              │ │ │
-│  │ │  ASF Framework      │ │  │ │  Binutils 2.21          │ │ │
-│  │ └─────────────────────┘ │  │ └─────────────────────────┘ │ │
-│  │                         │  │                             │ │
-│  │ Target: AT32UC3A0512    │  │ Target: ADSP-BF533          │ │
-│  │ Output: .elf/.hex/.bin  │  │ Output: .elf/.ldr           │ │
-│  └─────────────────────────┘  └─────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                     ALEPH DEVELOPMENT ENVIRONMENT               │
+├─────────────────────────────────────────────────────────────────┤
+│                        Host System (macOS)                      │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │              UNIFIED CONTAINER (aleph-builder)             │ │
+│  │                  Platform: linux/amd64                     │ │
+│  │                                                             │ │
+│  │  ┌─────────────────┐              ┌─────────────────┐       │ │
+│  │  │   AVR32 BUILD   │              │ BLACKFIN BUILD  │       │ │
+│  │  │                 │              │                 │       │ │
+│  │  │ • GCC 4.4.7     │              │ • GCC 4.3.5     │       │ │
+│  │  │ • ASF Framework │              │ • BF533 Target  │       │ │
+│  │  │ • AT32UC3A0512  │              │ • LDR Tools     │       │ │
+│  │  │ • Build Scripts │              │ • DSP Libraries │       │ │
+│  │  └─────────────────┘              └─────────────────┘       │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+│           │                                 │                   │
+│           ▼                                 ▼                   │
+│  ┌─────────────────┐              ┌─────────────────┐           │
+│  │  FIRMWARE       │              │  DSP MODULES    │           │
+│  │  OUTPUT         │              │  OUTPUT         │           │
+│  │                 │              │                 │           │
+│  │ • aleph-bees.hex│              │ • 12/13 .ldr    │           │
+│  │ • build-output/ │              │ • Auto-built    │           │
+│  │ • Optimized     │              │ • 92% success   │           │
+│  └─────────────────┘              └─────────────────┘           │
+│           │                                 │                   │
+│           └─────────────┬───────────────────┘                   │
+│                         ▼                                       │
+│              ┌─────────────────┐                                │
+│              │   SD CARD       │                                │
+│              │   BUNDLER       │                                │
+│              │                 │                                │
+│              │ • Complete image│                                │
+│              │ • 14 Scenes     │                                │
+│              │ • DSP Modules   │                                │
+│              │ • Latest FW     │                                │
+│              └─────────────────┘                                │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ## Container Details
 
-### AVR32 Container (`aleph-avr32`)
+### Unified Container (`aleph-builder`)
 
-- **ID**: `16c993596a63`
-- **Platform**: ARM64 (linux/arm64)
-- **Base**: Ubuntu (latest)
-- **Purpose**: Aleph firmware development
-- **Toolchain**: Custom-built from jsnyder/avr32-toolchain
-- **Location**: `/root/avr32-tools-6711e09/bin/`
-
-#### Key Components:
-
-- **AVR32 GCC 4.4.7**: Cross-compiler for AT32UC3A0512
-- **ASF Framework**: Complete Atmel Software Framework
-- **BEES Source**: Aleph's primary application firmware
-- **Custom Headers**: Minimal C library implementation
-
-### Blackfin Container (`aleph-blackfin`)
-
-- **Platform**: x86_64 (linux/amd64)
+- **Image**: `aleph-builder:latest`
+- **Platform**: x86_64 (linux/amd64) with ARM64 support
 - **Base**: Ubuntu 20.04
-- **Purpose**: DSP module development
-- **Toolchain**: Official ADI Blackfin 2014R1-RC2
-- **Location**: `/opt/uClinux/bfin-elf/bin/`
+- **Purpose**: Complete Aleph development (firmware + DSP modules)
 
-#### Key Components:
+#### AVR32 Toolchain Components:
+
+- **AVR32 GCC**: Cross-compiler for AT32UC3A0512 firmware
+- **ASF Framework**: Complete Atmel Software Framework
+- **BEES Build System**: Optimized firmware compilation
+- **Location**: Available in PATH within container
+
+#### Blackfin Toolchain Components:
 
 - **Blackfin GCC 4.3.5**: Official ADI cross-compiler for BF533
 - **DSP Libraries**: Hardware-optimized math libraries
 - **LDR Tools**: Boot loader generation for BF533
 - **Memory Management**: L1/L2 memory region support
+- **Location**: `/opt/uClinux/bfin-elf/bin/`
+
+## Build Scripts
+
+### Automated Build Tools
+
+- **`./build-bees.sh`**: Complete AVR32 firmware build
+- **`./build-dsp-modules.sh`**: Build all Blackfin DSP modules
+- **`./utils/sdcard-bundler/bundle-sdcard.sh`**: Create complete SD card image
+
+### Manual Build Commands
+
+```bash
+# Build firmware
+docker run --rm -v "$(pwd):/aleph" aleph-builder bash -c "cd /aleph/apps/bees && make"
+
+# Build single DSP module
+docker run --rm -v "$(pwd):/aleph" aleph-builder bash -c "cd /aleph/modules/waves && make"
+```
+
+## Development Status
+
+### Current Success Metrics
+
+- **Firmware Building**: ✅ 100% Success (aleph-bees.hex generated)
+- **DSP Module Building**: ✅ 92% Success (12/13 modules built)
+  - **Successful**: acid, analyser, dacs, dsyn, fmsynth, grains, lines, monosynth, tape, varilines, voder, waves
+  - **Failed**: mix (linker script issue)
+- **SD Card Bundling**: ✅ 100% Success (firmware + 14 scenes + modules)
+- **Container Environment**: ✅ Unified architecture implemented
+
+### Technical Debt
+
+- **High Priority**: Fix mix.lds linker script for 100% DSP build success
+- **Medium Priority**: Document scaler_fix.c compiler warning (already noted)
+- **Low Priority**: Optimize container startup time for development workflow
 
 ## Setup Instructions
 
@@ -151,20 +204,52 @@ make
 
 ### Blackfin DSP Development
 
+**Current Setup**: Our `aleph-builder` image includes both AVR32 and Blackfin toolchains.
+
+#### Build Individual DSP Module
+
 ```bash
-# Enter Blackfin container
-docker exec -it aleph-blackfin bash
+# Build single DSP module
+cd /path/to/aleph/project
+docker run --rm -v "$(pwd):/aleph" aleph-builder bash -c "cd /aleph/modules/waves && make"
 
-# Set up environment
-export PATH=/opt/uClinux/bfin-elf/bin:$PATH
-
-# Build DSP module (example: mix)
-cd /workspace/aleph/modules/mix
-make clean
-make
-
-# Results: mix (ELF), mix.ldr (hardware loader)
+# Results: waves.ldr (hardware loader file)
 ```
+
+#### Build All DSP Modules
+
+Use the automated build script:
+
+```bash
+# Build all DSP modules at once
+./build-dsp-modules.sh
+
+# Results:
+# - All .ldr files generated in respective module directories
+# - Build log: dsp-build.log
+# - Summary report of successes/failures
+```
+
+#### Manual Build Process
+
+```bash
+# Individual module build with detailed output
+docker run --rm -v "$(pwd):/aleph" aleph-builder bash -c "
+  cd /aleph/modules/[MODULE_NAME]
+  make clean  # Optional: clean previous build
+  make        # Build the module
+"
+
+# Check results
+ls -la modules/[MODULE_NAME]/*.ldr  # Generated loader file
+```
+
+#### Module Build Status
+
+Current build success rate: **12/13 modules (92%)**
+
+✅ **Successfully building**: acid, analyser, dacs, dsyn, fmsynth, grains, lines, monosynth, tape, varilines, voder, waves  
+❌ **Build issues**: mix (linker script error)
 
 ## File Structure
 
@@ -237,17 +322,21 @@ export PATH=/opt/uClinux/bfin-elf/bin:$PATH
 ### Container Management
 
 ```bash
-# Start containers
-docker start aleph-avr32 aleph-blackfin
+# View running aleph-builder containers
+docker ps | grep aleph-builder
 
-# Stop containers
-docker stop aleph-avr32 aleph-blackfin
+# View all aleph-builder containers
+docker ps -a | grep aleph-builder
 
-# View container status
-docker ps -a | grep aleph
+# Run builds using aleph-builder (containers are ephemeral)
+docker run --rm -v "$(pwd)/aleph:/aleph" aleph-builder bash -c "cd /aleph/apps/bees && make"
+docker run --rm -v "$(pwd)/aleph:/aleph" aleph-builder bash -c "cd /aleph/modules/waves && make"
 
-# Clean up (removes containers)
-docker rm -f aleph-avr32 aleph-blackfin
+# Interactive session for debugging
+docker run --rm -it -v "$(pwd)/aleph:/aleph" aleph-builder bash
+
+# Container cleanup (if needed)
+docker system prune -f
 ```
 
 ## Performance Notes
@@ -273,4 +362,4 @@ docker rm -f aleph-avr32 aleph-blackfin
 
 ---
 
-This dual-container setup provides a **complete, professional-grade development environment** for both Aleph processor architectures with real hardware compilation capabilities.
+This unified container setup provides a **complete, professional-grade development environment** for both Aleph processor architectures with real hardware compilation capabilities using a single `aleph-builder` image.

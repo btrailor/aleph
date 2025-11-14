@@ -108,6 +108,9 @@ typedef enum {
   eOpMidiOutClock,
   //  eOpMidiBend,
   //  eOpMidiTouch,
+  eOpCkdiv,
+  eOpLinlin,
+  eOpList4,
   numOpClasses // dummy/count 
 } op_id_t;
 

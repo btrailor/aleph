@@ -15,9 +15,9 @@ parameters / inputs: presets make no distincation between DSP paraemters and op 
 
  */
 
-//#include <stdio.h>
+#include <stdio.h>
 // asf
-#ifdef ARCH_AVR32
+#if defined(ARCH_AVR32) || defined(BEEKEEP)
 #include "print_funcs.h"
 #endif
 // bees
@@ -382,6 +382,15 @@ void preset_inc_select(s32 inc) {
 
 // get inclusion flag for given input, given preset
  u8 preset_in_enabled(u32 preIdx, u32 inIdx) {
+  // Add bounds checking
+  if (preIdx >= NET_PRESETS_MAX) {
+    printf("\r\n ERROR: preset_in_enabled preIdx %d out of bounds", preIdx);
+    return 0;
+  }
+  if (inIdx >= 512) { // PRESET_INODES_COUNT
+    printf("\r\n ERROR: preset_in_enabled inIdx %d out of bounds", inIdx);
+    return 0;
+  }
   return presets[preIdx].ins[inIdx].enabled;
 }
 

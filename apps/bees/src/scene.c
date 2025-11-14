@@ -47,6 +47,8 @@
 
 // RAM buffer for scene data
 sceneData_t* sceneData;
+// flag for connection remapping when loading v0.7 scenes
+u8 needsConnectionRemapping = 0;
 
 //----------------------------------------------
 //----- extern functions
@@ -204,6 +206,9 @@ void scene_read_buf(void) {
   sceneData->desc.beesVersion.maj = *src;
   src++;
   src = unpickle_16(src, &(sceneData->desc.beesVersion.rev));
+
+  // Set flag for connection remapping if loading v0.7 scene  
+  needsConnectionRemapping = (sceneData->desc.beesVersion.maj == 0 && sceneData->desc.beesVersion.min == 7) ? 1 : 0;
 
  // read module name
   // target is temp module name buffer, so we can run a comparison 
@@ -381,12 +386,26 @@ void scene_read_clean(void) {
 
 // set scene name
 void scene_set_name(const char* name) {
-  strncpy(sceneData->desc.sceneName, name, SCENE_NAME_LEN);
+  if (name != NULL) {
+    size_t len = strlen(name);
+    if (len >= SCENE_NAME_LEN) {
+      len = SCENE_NAME_LEN - 1;
+    }
+    memcpy(sceneData->desc.sceneName, name, len);
+    sceneData->desc.sceneName[len] = '\0';
+  }
 }
 
 // set module name
 void scene_set_module_name(const char* name) {
-  strncpy(sceneData->desc.moduleName, name, MODULE_NAME_LEN);
+  if (name != NULL) {
+    size_t len = strlen(name);
+    if (len >= MODULE_NAME_LEN) {
+      len = MODULE_NAME_LEN - 1;
+    }
+    memcpy(sceneData->desc.moduleName, name, len);
+    sceneData->desc.moduleName[len] = '\0';
+  }
 }
 
 // query module name and version

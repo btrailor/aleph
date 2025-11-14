@@ -43,10 +43,10 @@ typedef struct op_bignum_struct {
   // no outputs
   op_out_t outs[0];
   // drawing region handler
-  region reg;
-  // drawing region data.
-  /// FIXME: this should probly be alloc'd/freed from heap...?
-  u8 regData[OP_BIGNUM_GFX_BYTES];
+  region reg;  
+  // drawing region data - OPTIMIZED: Dynamic allocation
+  /// Allocated on enable, freed on disable (was: u8 regData[OP_BIGNUM_GFX_BYTES])
+  u8* regData;
   // timer data
   softTimer_t timer;
   // polled operator superclass

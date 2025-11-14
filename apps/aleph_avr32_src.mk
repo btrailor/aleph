@@ -34,12 +34,11 @@ $(LIB_AVR32)src/midi_common.c \
 $(LIB_AVR32)src/usb.c \
 $(LIB_AVR32)src/usb/ftdi/uhi_ftdi.c \
 $(LIB_AVR32)src/usb/ftdi/ftdi.c \
-$(LIB_AVR32)src/usb/cdc/uhi_cdc.c \
-$(LIB_AVR32)src/usb/cdc/cdc.c \
 $(LIB_AVR32)src/usb/hid/hid.c \
 $(LIB_AVR32)src/usb/hid/uhi_hid.c \
 $(LIB_AVR32)src/usb/midi/uhi_midi.c \
 $(LIB_AVR32)src/usb/midi/midi.c \
+$(LIB_AVR32)src/monome_transport.c \
 $(LIB_AVR32)src/fix.c \
 $(LIB_AVR32)src/libfixmath/fix16.c
 
@@ -79,9 +78,9 @@ $(LIB_AVR32)/conf/aleph	   \
 $(LIB_AVR32)src/fat_io_lib  \
 $(LIB_AVR32)src/usb     \
 $(LIB_AVR32)src/usb/ftdi   \
-$(LIB_AVR32)src/usb/cdc   \
 $(LIB_AVR32)src/usb/hid \
 $(LIB_AVR32)src/usb/midi   \
+$(LIB_AVR32)src/usb/cdc \
 $(LIB_AVR32)src/libfixmath
 
 # aleph_specific avr32 sources
@@ -123,4 +122,6 @@ $(ALEPH_AVR32)/startup/startup.S \
 INC_PATH += \
 $(ALEPH_AVR32)/src \
 $(ALEPH_AVR32)/src/fat_io_lib \
-$(ALEPH_COMMON)
+$(ALEPH_COMMON) \
+$(LIB_AVR32)test/include \
+$(LIB_AVR32)src

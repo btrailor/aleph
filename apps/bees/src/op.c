@@ -79,7 +79,10 @@ const op_id_t userOpTypes[NUM_USER_OP_TYPES] = {
   eOpThresh,
   eOpTimer,
   eOpTog,
-  eOpWW
+  eOpWW,
+  eOpCkdiv,
+  eOpLinlin,
+  eOpList4
 };
 
 
@@ -402,6 +405,21 @@ const op_desc_t op_registry[numOpClasses] = {
     .name = "MOUT_CLK",
     .size = sizeof(op_midi_out_clock_t),
     .init = &op_midi_out_clock_init,
+    .deinit = NULL
+  }, {
+    .name = "CKDIV",
+    .size = sizeof(op_ckdiv_t),
+    .init = &op_ckdiv_init,
+    .deinit = NULL
+  }, {
+    .name = "LINLIN",
+    .size = sizeof(op_linlin_t),
+    .init = &op_linlin_init,
+    .deinit = NULL
+  }, {
+    .name = "LIST4",
+    .size = sizeof(op_list4_t),
+    .init = &op_list4_init,
     .deinit = NULL
   }
 };
