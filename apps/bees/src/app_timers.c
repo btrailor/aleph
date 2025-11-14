@@ -133,7 +133,7 @@ static void monome_poll_timer_callback(void* obj) {
   // UHC callback spawns appropriate events
 #if BEEKEEP
 #else
-  ftdi_read();
+  monome_read_transport();
 #endif
 }
 
