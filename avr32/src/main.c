@@ -73,6 +73,7 @@ static u8 launch = 0;
 // flags for device connection events.
 // need to re-send after app launch.
 static u8 ftdiConnect = 0;
+static u8 cdcConnect = 0;
 static u8 monomeConnectMain = 0;
 static u8 hidConnect = 0;
 static u8 midiConnect = 0;
@@ -112,11 +113,12 @@ static void handler_FtdiDisconnect(s32 data) {
 static void handler_CdcConnect(s32 data) {
   if(!launch) {
     // print_dbg("\r\n got CDC monome device connection, saving flag for app launch");
-    ftdiConnect = 1; // reusing the ftdiConnect flag for now
+    cdcConnect = 1;
   }
   cdc_setup();
 }
 static void handler_CdcDisconnect(s32 data) {
+    cdcConnect = 0;
     /// CDC disconnection - assume this is monome disconnect
     event_t e = {.type = kEventMonomeDisconnect };
     event_post(&e);
@@ -329,6 +331,10 @@ void check_startup(void) {
             // re-send connection events if we got any
 	    if(ftdiConnect) {
 	      e1.type = kEventFtdiConnect;
+	      event_post(&e1);
+	    }
+	    if(cdcConnect) {
+	      e1.type = kEventCdcConnect;
 	      event_post(&e1);
 	    }
 	    if (monomeConnectMain) {
