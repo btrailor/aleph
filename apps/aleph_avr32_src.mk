@@ -26,6 +26,7 @@ $(LIB_AVR32)src/events.c \
 $(LIB_AVR32)src/font.c \
 $(LIB_AVR32)src/i2c.c \
 $(LIB_AVR32)src/monome.c \
+$(LIB_AVR32)src/monome_transport.c \
 $(LIB_AVR32)src/region.c \
 $(LIB_AVR32)src/screen.c \
 $(LIB_AVR32)src/timers.c \

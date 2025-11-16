@@ -1332,6 +1332,7 @@ u8* net_unpickle(const u8* src) {
   #endif
 
   // loop over operators
+  recallingScene = 1;
   for(i=0; i<count; ++i) {
     // get operator class id
     src = unpickle_32(src, &val);
@@ -1345,9 +1346,7 @@ u8* net_unpickle(const u8* src) {
     // add and initialize from class id
     /// .. this should update the operator count, inodes and onodes
 
-    recallingScene = 1;
     net_add_op(id);
-    recallingScene = 0;
 
     // unpickle operator state (if needed)
     op = net->ops[net->numOps - 1];
@@ -1360,6 +1359,7 @@ u8* net_unpickle(const u8* src) {
       src = (*(op->unpickle))(op, src);
     }
   }
+  recallingScene = 0;
 
   /// copy ALL i/o nodes, even unused!
   print_dbg("\r\n reading all input nodes ");
