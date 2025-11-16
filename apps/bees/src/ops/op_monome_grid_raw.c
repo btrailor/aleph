@@ -5,6 +5,10 @@
 #include "op_monome_grid_raw.h"
 
 //-------------------------------------------------
+//----- extern variables
+extern u8 recallingScene;
+
+//-------------------------------------------------
 //----- static variables
 
 //---- descriptor strings
@@ -193,8 +197,9 @@ const u8* op_mgrid_raw_unpickle(op_mgrid_raw_t* mgrid, const u8* src) {
     mgrid->monome.opLedBuffer[i] = *src;
     src++;
   }
-  if(mgrid->focus > 0) {
-    net_monome_set_focus( &(mgrid->monome), 1);
-  }
+  // Don't restore focus during scene recall - it will be set after loading completes
+  // if(mgrid->focus > 0) {
+  //   net_monome_set_focus( &(mgrid->monome), 1);
+  // }
   return src;
 }
