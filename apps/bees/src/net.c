@@ -446,6 +446,14 @@ s16 net_add_op(op_id_t opId) {
   if (net->numOps >= NET_OPS_MAX) {
     return -1;
   }
+  
+  // Check if operator ID is valid
+  if (opId >= numOpClasses) {
+    print_dbg("\r\n ERROR: invalid operator ID: ");
+    print_dbg_ulong(opId);
+    return -1;
+  }
+  
   print_dbg(" , op class: ");
   print_dbg_ulong(opId);
   print_dbg(" , size: ");
@@ -1245,9 +1253,17 @@ void net_clear_params(void) {
 // resend existing parameter values
 void net_send_params(void) {
   u32 i;
+  print_dbg("\r\n net_send_params: sending ");
+  print_dbg_ulong(net->numParams);
+  print_dbg(" parameters");
   for(i=0; i<net->numParams; i++) {
+    if ((i % 10) == 0) {
+      print_dbg("\r\n param ");
+      print_dbg_ulong(i);
+    }
     set_param_value(i, net->params[i].data.value);
   }
+  print_dbg("\r\n net_send_params: complete");
 }
 
 // retrigger all inputs
@@ -1346,7 +1362,11 @@ u8* net_unpickle(const u8* src) {
     // add and initialize from class id
     /// .. this should update the operator count, inodes and onodes
 
-    net_add_op(id);
+    if(net_add_op(id) < 0) {
+      print_dbg("\r\n ERROR: failed to add operator, scene loading aborted");
+      recallingScene = 0;
+      return NULL;
+    }
 
     // unpickle operator state (if needed)
     op = net->ops[net->numOps - 1];
@@ -1397,6 +1417,13 @@ u8* net_unpickle(const u8* src) {
 #endif
 
     src = param_unpickle(&(net->params[i]), src);
+  }
+
+  // Reinitialize scalers to point to the correct descriptor addresses
+  // (scaler contains a pointer to desc which becomes invalid after unpickling)
+  print_dbg("\r\n reinitializing param scalers");
+  for(i=0; i<(net->numParams); ++i) {
+    scaler_init(&(net->params[i].scaler), &(net->params[i].desc));
   }
 
   update_sys_op_pointers();
