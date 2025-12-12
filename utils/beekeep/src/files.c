@@ -189,10 +189,18 @@ u8 files_load_dsp_name(const char* name) {
   u8 ret = 0;
   FILE* fp;
   int i;
+  
+  if(!name || name[0] == 0) {
+    printf("\r\n ERROR: null or empty module name");
+    return 1;
+  }
+  
   strcpy(descname, workingDir);
   strcat(descname, name);
   strip_ext(descname);
   strcat(descname, ".dsc");
+  
+  printf("\r\n looking for descriptor: %s", descname);
 
   fp = fopen(descname, "r");
   
@@ -268,9 +276,20 @@ u8 files_load_scene_name(const char* name) {
   fread(sceneData, sizeof(sceneData_t), 1, f);
   fclose(f);
 
+  if(!sceneData) {
+    printf("\r\n ERROR: sceneData is null after load");
+    return 1;
+  }
+
   scene_read_buf();
 
   printf("\r\n loaded scene buffer, search DSP:");
+  
+  if(!sceneData->desc.moduleName || sceneData->desc.moduleName[0] == 0) {
+    printf("\r\n ERROR: module name is empty");
+    return 1;
+  }
+  
   ret = files_load_dsp_name(sceneData->desc.moduleName);
 
   return ret;

@@ -120,12 +120,27 @@ static void scene_select_button_callback(GtkWidget* but, gpointer data) {
 
 	res = gtk_dialog_run (GTK_DIALOG (dialog));
 	if (res == GTK_RESPONSE_ACCEPT) {
-	    char *filename;
+	    char *fullpath;
+	    char filename[64];
 	    GtkFileChooser *chooser = GTK_FILE_CHOOSER (dialog);
-	    filename = gtk_file_chooser_get_filename (chooser);
+	    fullpath = gtk_file_chooser_get_filename (chooser);
+	    
+	    // Extract directory and set as workingDir
+	    strcpy(workingDir, fullpath);
+	    strip_filename(workingDir, 64);
+	    
+	    // Extract filename for loading
+	    strcpy(filename, fullpath);
+	    char* slash = strrchr(filename, '/');
+	    if(slash) {
+	      strcpy(filename, slash + 1);
+	    }
+	    
+	    printf("\r\n workingDir: %s", workingDir);
+	    printf("\r\n filename: %s", filename);
+	    
 		ret = files_load_scene_name(filename);
 		
-//		if(ret) {
 		printf("\r\n clearing lists... ");
 			// rebuild all the lists
 			scroll_box_clear(&boxOps);
@@ -141,8 +156,7 @@ static void scene_select_button_callback(GtkWidget* but, gpointer data) {
 		    fill_ins(GTK_LIST_BOX(boxIns.list));
 		    fill_params(GTK_LIST_BOX(boxParams.list));
 		    fill_presets(GTK_LIST_BOX(boxPresets.list));
-//		}
-	    g_free (filename);
+	    g_free (fullpath);
 	  }
 	gtk_widget_destroy (dialog);
 }

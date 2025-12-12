@@ -10,6 +10,9 @@ void strip_filename(char* str, u8 len);
 // scan extension
 extern void scan_ext(char* filename, char* ext);
 
+// load dsp descriptor
+extern u8 files_load_dsp_name(const char* name);
+
 // export .scn file
 extern void write_scn(void);
 

@@ -17,6 +17,7 @@ src += \
 	$(bees)/src/app_timers.c \
 	$(bees)/src/op_pool.c \
 	$(bees)/src/net.c \
+	$(bees)/src/dynamic_network.c \
 	$(bees)/src/net_hid.c \
 	$(bees)/src/net_midi.c \
 	$(bees)/src/net_monome.c \
@@ -55,9 +56,12 @@ src += \
 	$(bees)/src/ops/op_iter.c \
 	$(bees)/src/ops/op_life_classic.c \
 	$(bees)/src/ops/op_list2.c \
+	$(bees)/src/ops/op_list4.c \
 	$(bees)/src/ops/op_list8.c \
 	$(bees)/src/ops/op_list16.c \
 	$(bees)/src/ops/op_logic.c \
+	$(bees)/src/ops/op_linlin.c \
+	$(bees)/src/ops/op_ckdiv.c \
 	$(bees)/src/ops/op_maginc.c \
 	$(bees)/src/ops/op_mem0d.c \
 	$(bees)/src/ops/op_mem1d.c \
@@ -188,12 +192,15 @@ endif
 obj = $(addprefix $(build-dir), $(addsuffix .o,$(basename $(src))))
 
 cflags += $(foreach path,$(inc),-I$(path))
+cflags += -I/opt/homebrew/Cellar/jansson/2.14.1/include
 cflags += -std=gnu99
 cflags += -D BEEKEEP=1
+cflags += -D ARCH_AVR32=1
+cflags += -D DYNAMIC_NETWORK_ENABLED=1
 cflags += -g -O0
 cflags += -Wall
 
-lflags += -Bstatic -ljansson
+lflags += -L/opt/homebrew/Cellar/jansson/2.14.1/lib -Bstatic -ljansson
 lflags += -fno-common
 
 cflags += $(shell pkg-config --cflags gtk+-3.0)
