@@ -22,4 +22,7 @@ typedef struct op_random_struct {
 } op_random_t;
 void op_random_init(void* mem);
 
+// Legacy unpickle for pre-Nov 2017 scenes (before SEED input was added)
+const u8* op_random_unpickle_legacy(op_random_t* op, const u8* src);
+
 #endif // header guard
