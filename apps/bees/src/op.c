@@ -491,16 +491,28 @@ const char* op_out_name(op_t* op, const u8 idx) {
 
 // get input value
 io_t op_get_in_val(op_t* op, s16 idx) {
+  // Safety check: if op is NULL or in_val array is NULL or pointer is NULL, return 0
+  if(op == NULL || op->in_val == NULL || op->in_val[idx] == NULL) {
+    return 0;
+  }
   return *(op->in_val[idx]);
 }
 
 // set input value
 void op_set_in_val(op_t* op, s16 idx, io_t val) {
+  // Safety check: if op is NULL or in_fn array is NULL or function pointer is NULL, return
+  if(op == NULL || op->in_fn == NULL || op->in_fn[idx] == NULL) {
+    return;
+  }
   (*(op->in_fn[idx]))(op, val);  
 }
 
 // increment input value
 void op_inc_in_val(op_t* op, const s16 idx, const io_t inc) {
+  // Safety check: op_get_in_val and op_set_in_val have their own checks
+  if(op == NULL) {
+    return;
+  }
   /* print_dbg("\r\n op_inc_in_val, "); */
   /* print_dbg(" op @ 0x"); */
   /* print_dbg_hex((u32)op); */
