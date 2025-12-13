@@ -49,7 +49,13 @@ int main (int argc, char **argv)
   if(arg) {
     // set working directory BEFORE loading scene
     strcpy(workingDir, path);
-    strip_filename(workingDir, 64);
+    strip_filename(workingDir, 256);
+    
+    // Extract just the filename from the path
+    char* slash = strrchr(filename, '/');
+    if(slash) {
+      strcpy(filename, slash + 1);
+    }
     
     if(strcmp(ext, ".scn") == 0) {
       files_load_scene_name(filename);

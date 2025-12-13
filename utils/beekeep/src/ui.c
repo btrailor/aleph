@@ -34,6 +34,8 @@ GtkWidget* newOpLabel;
 GtkWidget* connectInputBut;
 // connect/disconnect param button
 GtkWidget* connectParamBut;
+// module name entry widget
+GtkWidget* moduleNameEntry;
 
 // selections
 int opSelect = -1;
@@ -122,26 +124,44 @@ static void scene_select_button_callback(GtkWidget* but, gpointer data) {
 	if (res == GTK_RESPONSE_ACCEPT) {
 	    char *fullpath;
 	    char filename[64];
+	    char *slash;
+	    int dirlen;
+	    
 	    GtkFileChooser *chooser = GTK_FILE_CHOOSER (dialog);
 	    fullpath = gtk_file_chooser_get_filename (chooser);
 	    
-	    // Extract directory and set as workingDir
-	    strcpy(workingDir, fullpath);
-	    strip_filename(workingDir, 64);
+	    printf("\r\n [GUI] fullpath from dialog: %s", fullpath);
+	    printf("\r\n [GUI] fullpath length: %ld", strlen(fullpath));
+	    fflush(stdout);
 	    
-	    // Extract filename for loading
-	    strcpy(filename, fullpath);
-	    char* slash = strrchr(filename, '/');
+	    // Find the last '/' in the full path (work on original, not truncated)
+	    slash = strrchr(fullpath, '/');
 	    if(slash) {
-	      strcpy(filename, slash + 1);
+	      // Extract filename (everything after last /)
+	      strncpy(filename, slash + 1, 63);
+	      filename[63] = '\0';
+	      
+	      // Calculate directory length (up to and including the /)
+	      dirlen = (int)(slash - fullpath) + 1;
+	      if(dirlen > 255) dirlen = 255;
+	      
+	      // Copy directory to workingDir
+	      strncpy(workingDir, fullpath, dirlen);
+	      workingDir[dirlen] = '\0';
+	      
+	      printf("\r\n [GUI] extracted workingDir: %s", workingDir);
+	      printf("\r\n [GUI] workingDir length: %d", dirlen);
+	      printf("\r\n [GUI] extracted filename: %s", filename);
+	      fflush(stdout);
+	    } else {
+	      printf("\r\n [GUI] ERROR: no slash found in fullpath");
+	      fflush(stdout);
+	      g_free(fullpath);
+	      gtk_widget_destroy(dialog);
+	      return;
 	    }
-	    
-	    printf("\r\n workingDir: %s", workingDir);
-	    printf("\r\n filename: %s", filename);
-	    
+	
 		ret = files_load_scene_name(filename);
-		
-		printf("\r\n clearing lists... ");
 			// rebuild all the lists
 			scroll_box_clear(&boxOps);
 		    scroll_box_clear(&boxOuts);
@@ -151,11 +171,30 @@ static void scene_select_button_callback(GtkWidget* but, gpointer data) {
 			
 
 			printf("\r\n filling lists... ");
+			fflush(stdout);
+		    printf("\r\n filling ops list...");
+		    fflush(stdout);
 		    fill_ops(GTK_LIST_BOX(boxOps.list));
+		    printf("\r\n filling outs list...");
+		    fflush(stdout);
 		    fill_outs(GTK_LIST_BOX(boxOuts.list));
+		    printf("\r\n filling ins list...");
+		    fflush(stdout);
 		    fill_ins(GTK_LIST_BOX(boxIns.list));
+		    printf("\r\n filling params list...");
+		    fflush(stdout);
 		    fill_params(GTK_LIST_BOX(boxParams.list));
+		    printf("\r\n filling presets list...");
+		    fflush(stdout);
 		    fill_presets(GTK_LIST_BOX(boxPresets.list));
+		    printf("\r\n all lists filled");
+		    fflush(stdout);
+		    
+		    // Update module name entry with loaded scene's module name
+		    if(moduleNameEntry != NULL) {
+		      gtk_entry_set_text( GTK_ENTRY(moduleNameEntry), scene_get_module_name());
+		    }
+		    
 	    g_free (fullpath);
 	  }
 	gtk_widget_destroy (dialog);
@@ -318,10 +357,10 @@ void ui_init(void) {
   gtk_grid_attach_next_to( GTK_GRID(grid), wgt, xgt, GTK_POS_RIGHT, 1, 1);
 
   // module name entry
-  xgt = gtk_entry_new();
-  gtk_entry_set_text( GTK_ENTRY(xgt),  scene_get_module_name());
-  gtk_grid_attach_next_to( GTK_GRID(grid), xgt, wgt, GTK_POS_RIGHT, 2, 1);
-  g_signal_connect( xgt, "activate", G_CALLBACK(module_name_entry_callback), NULL);
+  moduleNameEntry = gtk_entry_new();
+  gtk_entry_set_text( GTK_ENTRY(moduleNameEntry),  scene_get_module_name());
+  gtk_grid_attach_next_to( GTK_GRID(grid), moduleNameEntry, wgt, GTK_POS_RIGHT, 2, 1);
+  g_signal_connect( moduleNameEntry, "activate", G_CALLBACK(module_name_entry_callback), NULL);
 
   //--- buttons and labels below lists
   // new op label

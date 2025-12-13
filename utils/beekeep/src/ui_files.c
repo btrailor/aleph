@@ -12,7 +12,7 @@
 #include "ui_files.h"
 
 // working directory
-char workingDir[64] = "";
+char workingDir[256] = "";
 
 // strip space from the end of a string
 static void strip_space(char* str, u8 len) {
@@ -27,15 +27,12 @@ static void strip_space(char* str, u8 len) {
 
 // strip filename from the end of a path
 void strip_filename(char* str, u8 len) {
-  u8 i;
-  for( i=(len-1); i>0; i-- ) {
-    if(str[i] == 0) { continue; }
-    else if(str[i] == '/') { 
-		if(i<(len-1)) {
-			str[i+1] = 0; 
-		}
-	}
-    else { break; }
+  int i;
+  for(i = strlen(str) - 1; i > 0; i--) {
+    if(str[i] == '/') {
+      str[i+1] = 0;
+      return;
+    }
   }
 }
 

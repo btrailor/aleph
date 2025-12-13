@@ -25,6 +25,9 @@
 #include "param.h"
 #include "scene.h"
 
+// beekeep embedded descriptors
+#include "embedded_descriptors.h"
+
 // beekeep
 #include "ui_files.h"
 
@@ -178,59 +181,61 @@ u8 files_load_dsp(u8 idx) {
 
 // search for specified dsp file and load it
 u8 files_load_dsp_name(const char* name) {
-  // don't need .ldr, but we do need .dsc...
-  char descname[128];
-  u8 nbuf[4];
-  // buffer for binary blob of single descriptor
-  u8 dbuf[PARAM_DESC_PICKLE_BYTES];
-  // unpacked descriptor
-  ParamDesc desc;
-  u32 nparams;
-  u8 ret = 0;
-  FILE* fp;
   int i;
+  u8 ret = 0;
+  u32 nparams;
+  u32 desc_size;
+  ParamDesc desc;
+  u8 nbuf[4];
+  const u8* desc_data;
+  const u8* dbuf;
+  char module_name[64];
+  const char* dot;
   
   if(!name || name[0] == 0) {
     printf("\r\n ERROR: null or empty module name");
     return 1;
   }
   
-  strcpy(descname, workingDir);
-  strcat(descname, name);
-  strip_ext(descname);
-  strcat(descname, ".dsc");
-  
-  printf("\r\n looking for descriptor: %s", descname);
-
-  fp = fopen(descname, "r");
-  
-  if(fp == NULL) {
-    printf("\r\n module descriptor not found; path: %s", descname);
-    ret = 1;
-    return ret;
+  // Strip extension (.ldr, .dsc, etc) from module name
+  strncpy(module_name, name, sizeof(module_name) - 1);
+  module_name[sizeof(module_name) - 1] = '\0';
+  dot = strchr(module_name, '.');
+  if (dot != NULL) {
+    *(char*)dot = '\0';  // Remove extension
   }
   
-  // get count of params
-  fread(nbuf, 1, 4, fp);
-  unpickle_32(nbuf, (u32*)&nparams); 
-
+  // Look up embedded descriptor by module name
+  desc_data = embedded_desc_find(module_name, &desc_size);
+  
+  if(desc_data == NULL) {
+    printf("\r\n module descriptor not found in embedded data; name: %s", module_name);
+    printf("\r\n WARNING: loading scene without parameter descriptors");
+    // Scene data already contains operators and parameters
+    // We just won't have UI metadata (labels, min/max, etc.)
+    scene_set_module_name(name);
+    return 0;
+  }
+  
+  // Parse the descriptor: first 4 bytes are param count
+  memcpy(nbuf, desc_data, 4);
+  unpickle_32(nbuf, (u32*)&nparams);
+  
   /// loop over params
   if(nparams > 0) {
     printf("\r\n loading param descriptor; count: %d", nparams);
     net_clear_params();
     for(i=0; i<nparams; i++) {
-      // read into desc buffer
-      fread(dbuf, 1, PARAM_DESC_PICKLE_BYTES, fp);
+      // Get pickled descriptor from embedded data (after the count)
+      dbuf = desc_data + 4 + (i * PARAM_DESC_PICKLE_BYTES);
       // unpickle directly into network descriptor memory
-      pdesc_unpickle( &desc, dbuf );
+      pdesc_unpickle( &desc, (u8*)dbuf );
       // copy descriptor to network and increment count
       net_add_param(i, (const ParamDesc*)(&desc));     
     }
   } else {
     ret = 1;
   }
-
-  fclose(fp);
 
   scene_set_module_name(name);
   return ret;
@@ -259,38 +264,64 @@ u8 files_load_scene(u8 idx) {
 // return 1 on success, 0 on failure
 u8 files_load_scene_name(const char* name) {
 
-  char path[64] = "";
+  char path[320] = "";
   FILE* f;
   u8 ret = 1;
+  int pathlen;
   
-//  strcpy(path, workingDir);
-  strcat(path, name);
-  printf("\r\n attempting to open scene file; path: %s", path);
+  printf("\r\n [SCENE] files_load_scene_name called with name: %s", name);
+  printf("\r\n [SCENE] workingDir at entry: %s", workingDir);
+  fflush(stdout);
+  
+  // Build path safely
+  pathlen = strlen(workingDir);
+  strncpy(path, workingDir, 319);
+  path[319] = '\0';
+  strncat(path, name, 319 - pathlen);
+  path[319] = '\0';
+  
+  printf("\r\n [SCENE] attempting to open scene file; path: %s", path);
+  fflush(stdout);
   
   
   f = fopen(path, "r");
   if(f == NULL) {
-	  printf("\r\n couldn't find scene file; path: %s", path);
+	  printf("\r\n [SCENE] ERROR: couldn't find scene file; path: %s", path);
+	  fflush(stdout);
 	  return 0;
   }
+  printf("\r\n [SCENE] file opened successfully");
+  fflush(stdout);
+  
   fread(sceneData, sizeof(sceneData_t), 1, f);
   fclose(f);
+  printf("\r\n [SCENE] file read and closed");
+  fflush(stdout);
 
   if(!sceneData) {
-    printf("\r\n ERROR: sceneData is null after load");
+    printf("\r\n [SCENE] ERROR: sceneData is null after load");
+    fflush(stdout);
     return 1;
   }
 
+  printf("\r\n [SCENE] calling scene_read_buf()");
+  fflush(stdout);
   scene_read_buf();
-
-  printf("\r\n loaded scene buffer, search DSP:");
+  printf("\r\n [SCENE] loaded scene buffer, search DSP");
+  printf("\r\n [SCENE] num ops after scene_read_buf: %d", net_num_ops());
+  fflush(stdout);
   
   if(!sceneData->desc.moduleName || sceneData->desc.moduleName[0] == 0) {
-    printf("\r\n ERROR: module name is empty");
+    printf("\r\n [SCENE] ERROR: module name is empty");
+    fflush(stdout);
     return 1;
   }
   
+  printf("\r\n [SCENE] calling files_load_dsp_name with: %s", sceneData->desc.moduleName);
+  fflush(stdout);
   ret = files_load_dsp_name(sceneData->desc.moduleName);
+  printf("\r\n [SCENE] files_load_dsp_name returned: %d", ret);
+  fflush(stdout);
 
   return ret;
 }
