@@ -213,7 +213,7 @@ u8 files_load_dsp_name(const char* name) {
     printf("\r\n WARNING: loading scene without parameter descriptors");
     // Scene data already contains operators and parameters
     // We just won't have UI metadata (labels, min/max, etc.)
-    scene_set_module_name(name);
+    scene_set_module_name(module_name);  // Use stripped name without extension
     return 0;
   }
   
@@ -237,7 +237,7 @@ u8 files_load_dsp_name(const char* name) {
     ret = 1;
   }
 
-  scene_set_module_name(name);
+  scene_set_module_name(module_name);  // Use stripped name without extension
   return ret;
 }
 

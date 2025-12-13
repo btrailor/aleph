@@ -34,8 +34,27 @@ GtkWidget* newOpLabel;
 GtkWidget* connectInputBut;
 // connect/disconnect param button
 GtkWidget* connectParamBut;
-// module name entry widget
-GtkWidget* moduleNameEntry;
+// module name combo box widget
+GtkWidget* moduleNameCombo;
+// Signal handler ID for module combo (to block during programmatic updates)
+static gulong moduleComboSignalId = 0;
+
+// Available module names for dropdown
+static const char* available_modules[] = {
+  "aleph-analyser",
+  "aleph-dacs",
+  "aleph-dsyn",
+  "aleph-fmsynth",
+  "aleph-grains",
+  "aleph-lines",
+  "aleph-mix",
+  "aleph-monosynth",
+  "aleph-tape",
+  "aleph-varilines",
+  "aleph-voder",
+  "aleph-waves",
+  NULL
+};
 
 // selections
 int opSelect = -1;
@@ -190,9 +209,46 @@ static void scene_select_button_callback(GtkWidget* but, gpointer data) {
 		    printf("\r\n all lists filled");
 		    fflush(stdout);
 		    
-		    // Update module name entry with loaded scene's module name
-		    if(moduleNameEntry != NULL) {
-		      gtk_entry_set_text( GTK_ENTRY(moduleNameEntry), scene_get_module_name());
+		    // Update module combo box with loaded scene's module name
+		    if(moduleNameCombo != NULL) {
+		      const char* loaded_module = scene_get_module_name();
+		      printf("\r\n [UI] Loaded scene module name: '%s'", loaded_module);
+		      fflush(stdout);
+		      
+		      // Block the signal to prevent callback during programmatic update
+		      if(moduleComboSignalId != 0) {
+		        g_signal_handler_block(moduleNameCombo, moduleComboSignalId);
+		      }
+		      
+		      // Find and select the matching module in combo box
+		      int found = 0;
+		      for(int i = 0; available_modules[i] != NULL; i++) {
+		        // Check for exact match
+		        if(strcmp(available_modules[i], loaded_module) == 0) {
+		          gtk_combo_box_set_active(GTK_COMBO_BOX(moduleNameCombo), i);
+		          found = 1;
+		          printf("\r\n [UI] Found exact match at index %d", i);
+		          break;
+		        }
+		        // Check if loaded_module matches without "aleph-" prefix
+		        if(strncmp(available_modules[i], "aleph-", 6) == 0) {
+		          if(strcmp(available_modules[i] + 6, loaded_module) == 0) {
+		            gtk_combo_box_set_active(GTK_COMBO_BOX(moduleNameCombo), i);
+		            found = 1;
+		            printf("\r\n [UI] Found match without prefix at index %d", i);
+		            break;
+		          }
+		        }
+		      }
+		      if(!found) {
+		        printf("\r\n [UI] Warning: module '%s' not found in dropdown list", loaded_module);
+		      }
+		      
+		      // Unblock the signal
+		      if(moduleComboSignalId != 0) {
+		        g_signal_handler_unblock(moduleNameCombo, moduleComboSignalId);
+		      }
+		      fflush(stdout);
 		    }
 		    
 	    g_free (fullpath);
@@ -207,10 +263,13 @@ static void scene_name_entry_callback( GtkEntry *entry, gpointer data) {
   scene_set_name(str);
 }
 
-static void module_name_entry_callback( GtkEntry *entry, gpointer data) {
+static void module_combo_changed_callback( GtkComboBox *combo, gpointer data) {
   const char* str;
-  str = gtk_entry_get_text(entry);
-  ui_set_module(str);
+  str = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(combo));
+  if(str != NULL) {
+    ui_set_module(str);
+    g_free((gpointer)str);
+  }
 }
 
 
@@ -356,11 +415,40 @@ void ui_init(void) {
   wgt = gtk_label_new("MODULE:");
   gtk_grid_attach_next_to( GTK_GRID(grid), wgt, xgt, GTK_POS_RIGHT, 1, 1);
 
-  // module name entry
-  moduleNameEntry = gtk_entry_new();
-  gtk_entry_set_text( GTK_ENTRY(moduleNameEntry),  scene_get_module_name());
-  gtk_grid_attach_next_to( GTK_GRID(grid), moduleNameEntry, wgt, GTK_POS_RIGHT, 2, 1);
-  g_signal_connect( moduleNameEntry, "activate", G_CALLBACK(module_name_entry_callback), NULL);
+  // module name combo box
+  moduleNameCombo = gtk_combo_box_text_new();
+  // Populate with available modules
+  for(int i = 0; available_modules[i] != NULL; i++) {
+    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(moduleNameCombo), available_modules[i]);
+  }
+  // Set initial selection based on current scene module
+  const char* current_module = scene_get_module_name();
+  printf("\r\n [UI_INIT] Current scene module: '%s'", current_module);
+  int found_init = 0;
+  for(int i = 0; available_modules[i] != NULL; i++) {
+    // Check for exact match
+    if(strcmp(available_modules[i], current_module) == 0) {
+      gtk_combo_box_set_active(GTK_COMBO_BOX(moduleNameCombo), i);
+      found_init = 1;
+      printf("\r\n [UI_INIT] Found exact match at index %d", i);
+      break;
+    }
+    // Check if current_module matches without "aleph-" prefix
+    if(strncmp(available_modules[i], "aleph-", 6) == 0) {
+      if(strcmp(available_modules[i] + 6, current_module) == 0) {
+        gtk_combo_box_set_active(GTK_COMBO_BOX(moduleNameCombo), i);
+        found_init = 1;
+        printf("\r\n [UI_INIT] Found match without prefix at index %d", i);
+        break;
+      }
+    }
+  }
+  if(!found_init && current_module[0] != '\0') {
+    printf("\r\n [UI_INIT] Warning: module '%s' not found in dropdown", current_module);
+  }
+  fflush(stdout);
+  gtk_grid_attach_next_to( GTK_GRID(grid), moduleNameCombo, wgt, GTK_POS_RIGHT, 2, 1);
+  moduleComboSignalId = g_signal_connect( moduleNameCombo, "changed", G_CALLBACK(module_combo_changed_callback), NULL);
 
   //--- buttons and labels below lists
   // new op label
