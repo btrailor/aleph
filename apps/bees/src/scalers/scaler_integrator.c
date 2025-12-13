@@ -57,36 +57,22 @@ void scaler_integrator_str(char* dst, void* scaler,  io_t in) {
 void scaler_integrator_init(void* scaler) {
   ParamScaler* sc = (ParamScaler*)scaler;
 
-  print_dbg("\r\n initializing integrator scaler for param, label: ");
-  print_dbg(sc->desc->label);
-
   // check descriptor
   if( sc->desc->type != eParamTypeIntegrator) {
-    print_dbg("\r\n !!! warning: wrong param type for integrator scaler");
-    print_dbg(" ; this param has type: ");
-    print_dbg_ulong(sc->desc->type);
+    // warning: wrong param type for integrator scaler
   }
   
-  print_dbg("\r\n [DEBUG] about to check initFlag");
   // init flag for static data
-  if(initFlag) { 
-    print_dbg("\r\n [DEBUG] initFlag already set, skipping static init");
-  } else {
-    print_dbg("\r\n [DEBUG] setting initFlag and initializing static data");
+  if(!initFlag) { 
     initFlag = 1;
 
-    print_dbg("\r\n [DEBUG] about to call scaler_get_nv_data");
     // assign
     tabVal = scaler_get_nv_data(eParamTypeIntegrator);
-    print_dbg("\r\n [DEBUG] scaler_get_nv_data returned successfully");
     //    tabRep = scaler_get_nv_rep(eParamTypeIntegrator);
   }
 
-  print_dbg("\r\n [DEBUG] setting inMin and inMax");
   sc->inMin = 0;
   sc->inMax = (tabSize - 1) << inRshift;
-
-  print_dbg("\r\n [DEBUG] scaler_integrator_init completed successfully");
   //// FIXME: add tuning functions....
   /// here, that would mean adjusting for actual samplerate. 
   /// table data assumes 48k.
@@ -102,9 +88,6 @@ io_t scaler_integrator_in(void* scaler, s32 x) {
   s32 ju = tabSize - 1;
   s32 jm = 0;
 
-  print_dbg("\r\n scaler_integrator_in, x: 0x");
-  print_dbg_hex(x);
-
   // first, cheat and check zero.
   /// will often be true
   if(x == 0) { return 0; }
@@ -118,9 +101,6 @@ io_t scaler_integrator_in(void* scaler, s32 x) {
       ju = jm;
     }
   }
-
-  /* print_dbg(" , median index: "); */
-  /* print_dbg_ulong(jm); */
 
   return (u16)jm << inRshift;
 }

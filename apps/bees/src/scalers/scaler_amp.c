@@ -49,19 +49,13 @@ void scaler_amp_str(char* dst, void* scaler,  io_t in) {
 // init function
 void scaler_amp_init(void* scaler) {
   ParamScaler* sc = (ParamScaler*)scaler;
-  print_dbg("\r\n initializing amp scaler for param, label: ");
-  print_dbg(sc->desc->label);
   // check descriptor
   if( sc->desc->type != eParamTypeAmp) {
-    print_dbg("\r\n !!! warning: wrong param type for amp scaler");
-    print_dbg(" ; this param has type: ");
-    print_dbg_ulong(sc->desc->type);
+    // warning: wrong param type for amp scaler
   }
   
   // init flag for static data
-  if(initFlag) { 
-    ;;
-  } else {
+  if(!initFlag) { 
     initFlag = 1;
 
     // assign
