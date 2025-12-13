@@ -24,6 +24,7 @@
 int main (int argc, char **argv)
 {
   char path[64];
+  char filename[64];
   char ext[16];
   void* fp;
   bool arg = 0;
@@ -38,21 +39,30 @@ int main (int argc, char **argv)
   
   if(arg) {
     strcpy(path, argv[1]);
-    scan_ext(path, ext);
+    strcpy(filename, argv[1]);
+    scan_ext(filename, ext);
   }
 
   app_init();
   app_launch(1);
 
   if(arg) {
+    // set working directory BEFORE loading scene
+    strcpy(workingDir, path);
+    strip_filename(workingDir, 256);
+    
+    // Extract just the filename from the path
+    char* slash = strrchr(filename, '/');
+    if(slash) {
+      strcpy(filename, slash + 1);
+    }
+    
     if(strcmp(ext, ".scn") == 0) {
-      files_load_scene_name(path);
+      files_load_scene_name(filename);
     }
     else if(strcmp(ext, ".json") == 0) {
-      net_read_json_native(path);
+      net_read_json_native(filename);
     }
-	strip_filename(path, 64);
-	strcpy(workingDir, path);
   }
   
   printf("\r\n working directory now: %s", workingDir);

@@ -37,7 +37,13 @@ void op_random_init(void* mem) {
   random->super.in_fn = op_random_in_fn;
   random->super.in_val = random->in_val;
   random->super.pickle = (op_pickle_fn) (&op_random_pickle);
-  random->super.unpickle = (op_unpickle_fn) (&op_random_unpickle);
+  
+  // Use legacy unpickle for old scenes without SEED input
+  if(legacyRandomFormat) {
+    random->super.unpickle = (op_unpickle_fn) (&op_random_unpickle_legacy);
+  } else {
+    random->super.unpickle = (op_unpickle_fn) (&op_random_unpickle);
+  }
 
   random->super.out = random->outs;
   random->super.opString = op_random_opstring;
@@ -127,3 +133,14 @@ const u8* op_random_unpickle(op_random_t* op, const u8* src) {
   return src;
 }
 
+// Legacy unpickle for scenes saved before SEED input was added (pre Nov 2017)
+// Old format only had 3 io_t values: min, max, trig
+const u8* op_random_unpickle_legacy(op_random_t* op, const u8* src) {
+  src = unpickle_io(src, &(op->min));
+  src = unpickle_io(src, &(op->max));
+  src = unpickle_io(src, &(op->trig));
+  // Use default seed value for legacy scenes
+  op->seed = 111;
+  op->x = 111;
+  return src;
+}

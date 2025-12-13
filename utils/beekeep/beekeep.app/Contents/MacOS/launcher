@@ -1,0 +1,13 @@
+#!/bin/bash
+# Get the directory where this script resides (Contents/MacOS/)
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# Navigate to bundle root and then to Resources
+BUNDLE_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
+BUNDLE_RES="$BUNDLE_ROOT/Resources"
+
+# Set GTK environment variables for Homebrew GTK-3
+export GDK_SCALE=1
+export GDK_DPI_SCALE=1
+
+# Execute the beekeep executable
+exec "$SCRIPT_DIR/beekeep" "$@"

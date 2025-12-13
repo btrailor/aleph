@@ -57,21 +57,13 @@ void scaler_integrator_short_str(char* dst, void* scaler,  io_t in) {
 void scaler_integrator_short_init(void* scaler) {
   ParamScaler* sc = (ParamScaler*)scaler;
 
-
-  print_dbg("\r\n initializing integrator_short scaler for param, label: ");
-  print_dbg(sc->desc->label);
-
   // check descriptor
   if( sc->desc->type != eParamTypeIntegratorShort) {
-    print_dbg("\r\n !!! warning: wrong param type for integrator_short scaler");
-    print_dbg(" ; this param has type: ");
-    print_dbg_ulong(sc->desc->type);
+    // warning: wrong param type for integrator_short scaler
   }
   
   // init flag for static data
-  if(initFlag) { 
-    ;;
-  } else {
+  if(!initFlag) { 
     initFlag = 1;
     // assign
     tabVal = scaler_get_nv_data(eParamTypeIntegratorShort);
@@ -95,9 +87,6 @@ io_t scaler_integrator_short_in(void* scaler, s32 x) {
   s32 jl = 0;
   s32 ju = tabSize - 1;
   s32 jm = 0;
-
-  print_dbg("\r\n scaler_integrator_short_in, x: 0x");
-  print_dbg_hex(x);
 
   // first, cheat and check zero.
   /// will often be true

@@ -7,6 +7,7 @@
 #include "ui.h"
 #include "ui_handlers.h"
 #include "ui_lists.h"
+#include "ui_files.h"
 
 //================================
 //==== selection handlers

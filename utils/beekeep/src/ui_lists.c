@@ -406,8 +406,23 @@ void fill_params(GtkListBox *list) {
 
   g_signal_connect (list, "row-selected", G_CALLBACK(select_param_callback), NULL);
   n = net->numParams;
+  
+  printf("\r\n [FILL_PARAMS] starting, numParams: %d", n);
+  fflush(stdout);
+  
+  // Sanity check: numParams should be reasonable
+  if(n < 0 || n > 256) {
+    printf("\r\n [FILL_PARAMS] ERROR: invalid numParams: %d, skipping", n);
+    fflush(stdout);
+    return;
+  }
 
   for(i=0; i<n; i++) {
+    if(i % 10 == 0) {
+      printf("\r\n [FILL_PARAMS] processing param %d/%d", i, n);
+      fflush(stdout);
+    }
+    
     // build name string
     snprintf(str, LABEL_BUF_SIZE, "%d.%s", i, net_in_name(i + net->numIns) );
 

@@ -27,10 +27,6 @@ static u8 initFlag = 0;
 //---- extern funcs
 
 s32 scaler_note_val(void* scaler, io_t in) {
-  print_dbg("\r\n requesting note_scaler value for input: 0x"); 
-  print_dbg_hex((u32)in);
-  print_dbg(" ; result: 0x");
-  print_dbg_hex(tabVal[(u16)((u16)in >> inRshift)] );
   //  u16 uin = BIT_ABS_16((s16)in);
   if(in < 0) { in = 0; }
   return tabVal[(u16)((u16)in >> inRshift)];
@@ -79,9 +75,6 @@ io_t scaler_note_in(void* scaler, s32 x) {
   s32 jl = 0;
   s32 ju = tabSize - 1;
   s32 jm = 0;
-
-  print_dbg("\r\n scaler_note_in, x: 0x");
-  print_dbg_hex(x);
 
   while(ju - jl > 1) {
     jm = (ju + jl) >> 1;
