@@ -41,7 +41,7 @@
 
 
 // define for serialization debugging
-// #define PRINT_PICKLE 1
+#define PRINT_PICKLE 1
 
 
 //=========================================
@@ -475,6 +475,16 @@ s16 net_add_op(op_id_t opId) {
 
   print_dbg("\r\n adding operator; old input count: ");
   print_dbg_ulong(numInsSave);
+
+  // Bounds check: opId must be valid
+  if (opId < 0 || opId >= numOpClasses) {
+    print_dbg("\r\n ERROR: invalid operator class ID: ");
+    print_dbg_ulong(opId);
+    print_dbg(" (max valid: ");
+    print_dbg_ulong(numOpClasses - 1);
+    print_dbg(")");
+    return -1;
+  }
 
 #ifdef DYNAMIC_NETWORK_ENABLED
   // Check if we need to expand the ops array
@@ -1118,14 +1128,24 @@ io_t net_get_in_value(s32 inIdx) {
     inIdx -= net->numIns;
     return get_param_value(inIdx);
   } else {
-    return op_get_in_val(net->ops[net->ins[inIdx].opIdx], net->ins[inIdx].opInIdx);
+    // Safety check: ensure opIdx is valid and operator exists
+    s16 opIdx = net->ins[inIdx].opIdx;
+    if(opIdx < 0 || opIdx >= net->numOps || net->ops[opIdx] == NULL) {
+      return 0;
+    }
+    return op_get_in_val(net->ops[opIdx], net->ins[inIdx].opInIdx);
   }
 }
 
 void net_set_in_value(s32 inIdx, io_t val) {
   if (inIdx < 0) return;
   if (inIdx < net->numIns) {
-    op_set_in_val(net->ops[net->ins[inIdx].opIdx], net->ins[inIdx].opInIdx, val);
+    // Safety check: ensure opIdx is valid and operator exists
+    s16 opIdx = net->ins[inIdx].opIdx;
+    if(opIdx < 0 || opIdx >= net->numOps || net->ops[opIdx] == NULL) {
+      return;
+    }
+    op_set_in_val(net->ops[opIdx], net->ins[inIdx].opInIdx, val);
   } else {
     // parameter
     inIdx -= net->numIns;
@@ -1144,7 +1164,12 @@ io_t net_inc_in_value(s32 inIdx, io_t inc) {
     return inc_param_value(inIdx, inc);
 
   } else {
-    op = net->ops[net->ins[inIdx].opIdx];
+    // Safety check: ensure opIdx is valid and operator exists
+    s16 opIdx = net->ins[inIdx].opIdx;
+    if(opIdx < 0 || opIdx >= net->numOps || net->ops[opIdx] == NULL) {
+      return 0;
+    }
+    op = net->ops[opIdx];
     op_inc_in_val(op, net->ins[inIdx].opInIdx, inc);    
     return net_get_in_value(inIdx);
   }
@@ -1303,7 +1328,6 @@ void net_add_param(u32 idx, const ParamDesc * pdesc) {
 
 // clear existing parameters
 void net_clear_params(void) {
-  print_dbg("\r\n clearing parameter list... ");
   net->numParams = 0;
 }
 
@@ -1373,11 +1397,218 @@ u8* net_pickle(u8* dst) {
 // focus on init during scene recall
 u8 recallingScene = 0;
 
+// Flag for legacy scene format (Random operator without SEED input)
+// Set by net_unpickle when it detects an old format scene
+u8 legacyRandomFormat = 0;
+
+// Probe function to detect if a scene uses legacy Random format
+// Returns 1 if legacy format detected, 0 otherwise
+// 
+// Strategy: Scan the entire operator pickle data for the pattern of
+// Random operator ID (16) followed by data. For each Random found,
+// check if treating it as OLD format (6 bytes) produces valid next ID
+// while NEW format (8 bytes) does not.
+//
+// This works because operator IDs are stored as 32-bit values with
+// the high bytes being zero for valid IDs < 256.
+static u8 net_detect_legacy_format(const u8* src) {
+  u32 count, val, next_old, next_new;
+  u32 i;
+  const u8* probe = src;
+  const u8* random_start;
+  
+  // Read operator count
+  probe = unpickle_32(probe, &count);
+  
+  #ifdef PRINT_PICKLE
+  print_dbg("\r\n [DETECT] Scanning ");
+  print_dbg_ulong(count);
+  print_dbg(" operators for legacy Random format");
+  #endif
+  
+  // Known pickle sizes for common operators
+  // Using actual byte counts for io_t pickle (2 bytes per io_t)
+  // -1 means variable/unknown size - we'll try to continue anyway
+  static const s16 pickle_sizes[numOpClasses] = {
+    6,   // 0: eOpSwitch
+    10,  // 1: eOpEnc
+    6,   // 2: eOpAdd
+    6,   // 3: eOpMul
+    6,   // 4: eOpGate
+    6,   // 5: eOpMonomeGridClassic
+    0,   // 6: eOpMidiNote
+    6,   // 7: eOpAdc
+    6,   // 8: eOpMetro
+    0,   // 9: eOpPreset
+    2,   // 10: eOpTog
+    8,   // 11: eOpAccum
+    0,   // 12: eOpSplit
+    6,   // 13: eOpDiv
+    6,   // 14: eOpSub
+    4,   // 15: eOpTimer
+    8,   // 16: eOpRandom - NEW format
+    18,  // 17: eOpList8
+    6,   // 18: eOpThresh
+    4,   // 19: eOpMod
+    6,   // 20: eOpBits
+    6,   // 21: eOpIs
+    6,   // 22: eOpLogic
+    6,   // 23: eOpList2
+    268, // 24: eOpLifeClassic - 6 io_t (12 bytes) + 256 bytes
+    6,   // 25: eOpHistory
+    2,   // 26: eOpBignum
+    -1,  // 27: eOpScreen - variable
+    0,   // 28: eOpSplit4
+    8,   // 29: eOpDelay
+    4,   // 30: eOpRoute
+    0,   // 31: eOpMidiCC
+    0,   // 32: eOpMidiOutNote
+    34,  // 33: eOpList16
+    18,  // 34: eOpStep - REVERTED: legacy scenes use 18 bytes
+    6,   // 35: eOpRoute8
+    -1,  // 36: eOpCascades
+    -1,  // 37: eOpBars
+    0,   // 38: eOpSerial
+    0,   // 39: eOpHid
+    -1,  // 40: eOpWW
+    -1,  // 41: eOpMonomeArc
+    8,   // 42: eOpFade
+    6,   // 43: eOpDivr
+    4,   // 44: eOpShl
+    4,   // 45: eOpShr
+    2,   // 46: eOpChange
+    8,   // 47: eOpRoute16
+    -1,  // 48: eOpBars8
+    0,   // 49: eOpMidiOutCC
+    4,   // 50: eOpParam
+    2,   // 51: eOpMem0d
+    -1,  // 52: eOpMem1d
+    -1,  // 53: eOpMem2d
+    10,  // 54: eOpIter
+    -1,  // 55: eOpMonomeGridRaw
+    4,   // 56: eOpMidiClock
+    -1,  // 57: eOpMaginc
+    -1,  // 58: eOpKria
+    -1,  // 59: eOpHarry
+    -1,  // 60: eOpPoly
+    0,   // 61: eOpMidiProg
+    0,   // 62: eOpMidiOutClock
+    4,   // 63: eOpCkdiv
+    8,   // 64: eOpLinlin
+    8,   // 65: eOpList4
+  };
+  
+  // Probe through operators
+  for(i = 0; i < count && i < 64; ++i) {
+    probe = unpickle_32(probe, &val);
+    
+    #ifdef PRINT_PICKLE
+    print_dbg("\r\n [DETECT] Op ");
+    print_dbg_ulong(i);
+    print_dbg(" type=");
+    print_dbg_ulong(val);
+    #endif
+    
+    if(val >= numOpClasses) {
+      // Invalid operator ID - scene might be corrupt or already misaligned
+      #ifdef PRINT_PICKLE
+      print_dbg(" INVALID ID, aborting detection");
+      #endif
+      return 0;
+    }
+    
+    // Check if this is a Random operator
+    if(val == eOpRandom) {
+      random_start = probe;
+      
+      // Check if NEXT op ID is valid with NEW format (8 bytes) vs OLD (6 bytes)
+      if(i + 1 < count) {
+        unpickle_32(random_start + 8, &next_new);  // Skip 8 bytes (new format)
+        unpickle_32(random_start + 6, &next_old);  // Skip 6 bytes (old format)
+        
+        #ifdef PRINT_PICKLE
+        print_dbg(" RANDOM: next@+8=");
+        print_dbg_ulong(next_new);
+        print_dbg(" next@+6=");
+        print_dbg_ulong(next_old);
+        #endif
+        
+        // If new format gives invalid ID but old format gives valid ID -> legacy
+        if(next_new >= numOpClasses && next_old < numOpClasses) {
+          #ifdef PRINT_PICKLE
+          print_dbg("\r\n *** LEGACY FORMAT DETECTED ***");
+          #endif
+          return 1;
+        }
+        // If new format is valid, assume new format and continue
+      }
+      // Continue with new format size (will be wrong for legacy, but we've already detected)
+      probe += 8;
+    } else if(pickle_sizes[val] >= 0) {
+      // Known operator with known size
+      probe += pickle_sizes[val];
+    } else {
+      // Unknown/variable size operator - try to find next valid ID by scanning
+      // This is a heuristic: look for a 4-byte aligned value < numOpClasses
+      // with high bytes == 0 (which is how operator IDs are stored)
+      const u8* scan = probe;
+      const u8* max_scan = probe + 2048;  // Don't scan too far
+      u32 scan_val;
+      u8 found = 0;
+      
+      #ifdef PRINT_PICKLE
+      print_dbg(" variable-size, scanning...");
+      #endif
+      
+      while(scan < max_scan) {
+        unpickle_32(scan, &scan_val);
+        if(scan_val < numOpClasses) {
+          // Possible next operator ID
+          probe = scan;
+          found = 1;
+          #ifdef PRINT_PICKLE
+          print_dbg(" found ID ");
+          print_dbg_ulong(scan_val);
+          print_dbg(" at offset ");
+          print_dbg_ulong((u32)(scan - random_start));
+          #endif
+          break;
+        }
+        scan += 2;  // Scan in 2-byte increments (io_t size)
+      }
+      if(!found) {
+        #ifdef PRINT_PICKLE
+        print_dbg(" scan failed, assuming new format");
+        #endif
+        return 0;
+      }
+    }
+  }
+  
+  // All Random operators (if any) appear to be new format
+  #ifdef PRINT_PICKLE
+  print_dbg("\r\n [DETECT] No legacy format detected");
+  #endif
+  return 0;
+}
+
 // unpickle the network!
 u8* net_unpickle(const u8* src) {
   u32 i, count, val;
   op_id_t id;
   op_t* op;
+#ifdef PRINT_PICKLE
+  const u8* pickle_start = src;  // Track start for byte offset calculation
+  const u8* op_start;
+#endif
+
+  // Detect if this is a legacy format scene (Random without SEED)
+  legacyRandomFormat = net_detect_legacy_format(src);
+  #ifdef PRINT_PICKLE
+  if(legacyRandomFormat) {
+    print_dbg("\r\n *** Using legacy Random format (no SEED input) ***");
+  }
+  #endif
 
   // reset operator count, param count, pool offset, etc
   // no system operators after this
@@ -1394,16 +1625,25 @@ u8* net_unpickle(const u8* src) {
   #ifdef PRINT_PICKLE
     print_dbg("\r\n count of ops: ");
     print_dbg_ulong(count);
+    print_dbg("\r\n pickle_start offset: 0x");
+    print_dbg_hex((u32)(pickle_start));
   #endif
 
   // loop over operators
   for(i=0; i<count; ++i) {
+#ifdef PRINT_PICKLE
+    op_start = src;
+#endif
     // get operator class id
     src = unpickle_32(src, &val);
     id = (op_id_t)val;
 
     #ifdef PRINT_PICKLE
-        print_dbg("\r\n adding op, class id: ");
+        print_dbg("\r\n [Op ");
+        print_dbg_ulong(i);
+        print_dbg("] byte_offset: ");
+        print_dbg_ulong((u32)(op_start - pickle_start));
+        print_dbg(", class_id: ");
         print_dbg_ulong(id);
     #endif
 
@@ -1419,16 +1659,36 @@ u8* net_unpickle(const u8* src) {
 
     if(op->unpickle != NULL)  {
       #ifdef PRINT_PICKLE
-            print_dbg(" ... unpickling op .... ");
-            print_dbg_ulong(id);
+            print_dbg(" ... unpickling op data");
       #endif
       src = (*(op->unpickle))(op, src);
+      #ifdef PRINT_PICKLE
+            print_dbg(", bytes consumed: ");
+            print_dbg_ulong((u32)(src - op_start - 4));  // Subtract 4 for the ID we already read
+      #endif
+    } else {
+      #ifdef PRINT_PICKLE
+            print_dbg(" ... no unpickle func");
+      #endif
     }
   }
 
   /// copy ALL i/o nodes, even unused!
   print_dbg("\r\n reading all input nodes ");
   
+#ifdef DYNAMIC_NETWORK_ENABLED
+  // Expand ins/outs capacity to NET_INS_MAX/NET_OUTS_MAX before unpickling
+  // Scene files contain NET_INS_MAX input nodes and NET_OUTS_MAX output nodes
+  if(net->insCapacity < NET_INS_MAX) {
+    print_dbg("\r\n expanding ins capacity for unpickle");
+    dynamic_network_expand_ins(net, NET_INS_MAX);
+  }
+  if(net->outsCapacity < NET_OUTS_MAX) {
+    print_dbg("\r\n expanding outs capacity for unpickle");
+    dynamic_network_expand_outs(net, NET_OUTS_MAX);
+  }
+#endif
+
   for(i=0; i < (NET_INS_MAX); ++i) {
     src = inode_unpickle(src, &(net->ins[i]));
   }
@@ -1452,6 +1712,14 @@ u8* net_unpickle(const u8* src) {
 #ifdef PRINT_PICKLE
   print_dbg("\r\n reading params, count: ");
   print_dbg_ulong(net->numParams);
+#endif
+
+#ifdef DYNAMIC_NETWORK_ENABLED
+  // Expand params capacity if needed
+  if(net->paramsCapacity < net->numParams) {
+    print_dbg("\r\n expanding params capacity for unpickle");
+    dynamic_network_expand_params(net, net->numParams);
+  }
 #endif
 
   // read parameter nodes (includes value and descriptor)

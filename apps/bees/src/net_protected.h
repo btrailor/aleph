@@ -130,6 +130,9 @@ typedef struct _ctlnet {
 //! pointer to network!
 extern ctlnet_t* net;
 
+//! flag for legacy scene format (Random operator without SEED input)
+extern u8 legacyRandomFormat;
+
 
 //! --- pointers to system-created ops
 
