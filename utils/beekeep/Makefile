@@ -124,7 +124,9 @@ src += 	src/app_beekeep.c \
 	src/files.c \
 	src/handler.c \
 	src/main.c \
-	src/param_scaler.c
+	src/param_scaler.c \
+	src/embedded_descriptors.c \
+	src/embedded_descriptors_data.c
 
 # new sources
 src += 	src/dot.c \
