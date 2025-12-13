@@ -11,8 +11,8 @@
 #include "bfin.h"
 #include "flash.h"
 #include "memory.h"
-#include "types.h"
-
+#include "types.h"// bees
+#include "flash_bees.h"
 //-----------------------------------
 //----  define, typedef
 
@@ -34,6 +34,9 @@ typedef const struct {
 // NVRAM data structure located in the flash array.
 //__attribute__((__section__(".flash_nvram")))
 nvram_data_t flash_nvram_data;
+
+// Static buffer for application flash data (used in beekeep simulator)
+static beesFlashData appFlashData;
 
 //--------------------------------
 // ---- extern vars
@@ -166,7 +169,7 @@ void flash_clear_firstrun(void) {
 /// get pointer to application data in flash
 void* flash_app_data(void) {
 #if 1
-    return NULL;
+    return (void*)(&appFlashData);
 #else
   return (void*)(&(flash_nvram_data.appData));
 #endif
