@@ -29,6 +29,7 @@ const op_id_t userOpTypes[NUM_USER_OP_TYPES] = {
   eOpBignum,
   eOpBits,
   eOpChange,
+  eOpCkdiv,
   eOpDelay,
   eOpDiv,
   eOpDivr,
@@ -43,7 +44,9 @@ const op_id_t userOpTypes[NUM_USER_OP_TYPES] = {
   eOpIter,
   eOpKria,
   eOpLifeClassic,
+  eOpLinlin, // "LL"
   eOpList2,
+  eOpList4,
   eOpList8,
   eOpList16,
   eOpLogic,
@@ -410,7 +413,7 @@ const op_desc_t op_registry[numOpClasses] = {
     .name = "CKDIV",
     .size = sizeof(op_ckdiv_t),
     .init = &op_ckdiv_init,
-    .deinit = NULL
+    .deinit = &op_ckdiv_deinit
   }, {
     .name = "LINLIN",
     .size = sizeof(op_linlin_t),

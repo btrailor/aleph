@@ -19,6 +19,10 @@
 #define SMOOTH_FREQ_MAX 0x400000 // 64s
 #define SMOOTH_FREQ_RADIX 7
 
+#define SLEW_SECONDS_MIN 0x2000 // 1/8
+#define SLEW_SECONDS_MAX 0x400000 // 64
+#define SLEW_SECONDS_RADIX 7
+
 /// FIXME: 
 // right now, "fade" is the raw increment of a linear ramp from 0 to 0x7fffffff.
 // not very intuitive,
@@ -48,8 +52,8 @@
 
 // max time in seconds, 16.16
 //// revert until shit gets figured out
-#define PARAM_SECONDS_MAX 0x003c0000
-#define PARAM_SECONDS_RADIX 7
+#define PARAM_SECONDS_MAX 0x7FFFFFFF
+#define PARAM_SECONDS_RADIX 32
 
 /// smoother default
 // about 1ms?
@@ -62,6 +66,8 @@
 
 // enumerate parameters
 enum params {
+  // global time scaler param
+  eParamTimescale,
 
   // xfade time
   eParamFade0,
@@ -69,20 +75,11 @@ enum params {
 
   /// smoothers have to be processed first!
   ////////////////////////////////
-  //// FIXME: not using these
   eParamCut0Slew,
   eParamRq0Slew,
-  eParamLow0Slew,
-  eParamHigh0Slew,
-  eParamBand0Slew,
-  eParamNotch0Slew,
 
   eParamCut1Slew,
   eParamRq1Slew,
-  eParamLow1Slew,
-  eParamHigh1Slew,
-  eParamBand1Slew,
-  eParamNotch1Slew,
   //////////////////
 
   eParamDry0Slew,
@@ -93,9 +90,7 @@ enum params {
 
   // smoothing parameter for ALL mix values!
   ////////////////////////////////
-  //// FIXME: not using this
-  eParamMixSlew,
-  ////////////////////////
+  eParamMixSlew,// unused for now but could come in handy later
 
   // delay input mix
   eParam_adc0_del0,		

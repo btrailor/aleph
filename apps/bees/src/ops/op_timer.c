@@ -8,10 +8,11 @@
 #include "net_protected.h"
 #include "pickle.h"
 #include "op_timer.h"
+#include "app_timers.h"
 
 //-------------------------------------------------
 //----- descriptor
-static const char* op_timer_instring = "EVENT\0  ";
+static const char* op_timer_instring = "EVENT\0  RESET\0  ";
 static const char* op_timer_outstring = "TIME\0   ";
 static const char* op_timer_opstring = "TIMER";
 
@@ -21,6 +22,7 @@ static const char* op_timer_opstring = "TIMER";
 
 // set inputs
 static void op_timer_in_event(op_timer_t* timer, const io_t v);
+static void op_timer_in_reset(op_timer_t* timer, const io_t v);
 // pickle / unpickle
 static u8* op_timer_pickle(op_timer_t* timer, u8* dst);
 static u8* op_timer_unpickle(op_timer_t* timer, const u8* src);
@@ -29,8 +31,9 @@ static u8* op_timer_unpickle(op_timer_t* timer, const u8* src);
 //static void op_timer_calc(op_timer_t* timer); 
 
 // array of input functions 
-static op_in_fn op_timer_in[1] = {
+static op_in_fn op_timer_in[2] = {
   (op_in_fn)&op_timer_in_event,
+  (op_in_fn)&op_timer_in_reset,
 };
 
 //----- external function definition
@@ -45,12 +48,13 @@ void op_timer_init(void* op) {
   timer->super.unpickle = (op_unpickle_fn) (&op_timer_unpickle);
   
   // superclass state
-  timer->super.numInputs = 1;
+  timer->super.numInputs = 2;
   timer->super.numOutputs = 1;
   timer->outs[0] = -1;
  
   timer->super.in_val = timer->in_val;
   timer->in_val[0] = &(timer->event);
+  timer->in_val[1] = &(timer->reset);
   timer->super.out = timer->outs;
   timer->super.opString = op_timer_opstring;
   timer->super.inString = op_timer_instring;
@@ -59,8 +63,8 @@ void op_timer_init(void* op) {
 
   // class state
   timer->event = 0;
+  timer->reset = 0;
   timer->ticks = tcTicks;
-  timer->interval = 1000;
 }
 
 //-------------------------------------------------
@@ -71,27 +75,18 @@ void op_timer_init(void* op) {
 // input event
 static void op_timer_in_event(op_timer_t* timer, const io_t v) {
   timer->event = v;
-  /// FIXME: should check for overflow here...
-  timer->interval = tcTicks - timer->ticks;
+
+  // timers_libavr32_tick_to_ms_tick checks for overflow
+  u32 interval = timers_libavr32_tick_to_ms_tick(tcTicks - timer->ticks);
   timer->ticks = tcTicks;
-  // calculate output value for timer from interval
 
-  //  output will ultimately be connected to a time param
-  // time is specified in seconds, fixed-width, arbitrary radix
-  // for example, from aleph-lines:
-  // seconds in 16.16
-  // #define PARAM_SECONDS_MAX 0x003c0000
-  // #define PARAM_SECONDS_RADIX 6
+  // calculate output value in ms convention from libavr32_ticks
+  net_activate(timer, 0, interval);
+}
 
-  /// FIXME:
-
-  /// unfortunately, timer ticks are in ms.
-  /// it would be nice if they were some 2^(-N) multiple of seconds.
-  /// however, it would make it more painful for the METRO operator.
-  /// for now let's pretend timer interval is 1/1024
-  /// reported intervals will be fast by a ratio of 1.024,
-  /// in the example above.
-  net_activate(timer, 0, timer->interval);   
+static void op_timer_in_reset(op_timer_t* timer, const io_t v) {
+  timer->reset = v;
+  timer->ticks = tcTicks;
 }
 
 
