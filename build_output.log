@@ -1,0 +1,8 @@
+WARNING: The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8) and no specific platform was requested
+echo "cleaning project..."
+cleaning project...
+make clean
+make[1]: Entering directory '/aleph/apps/bees'
+make[1]: Leaving directory '/aleph/apps/bees'
+make[1]: *** No rule to make target 'clean'.  Stop.
+make: *** [Makefile:36: deploy] Error 2

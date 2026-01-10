@@ -21,7 +21,6 @@ avr32/drivers/usbb/usbb_host.c                     \
 common/services/clock/uc3a0_a1/sysclk.c            \
 common/services/storage/ctrl_access/ctrl_access.c \
 common/services/usb/uhc/uhc.c \
-$(LIB_AVR32)src/adc.c \
 $(LIB_AVR32)src/events.c \
 $(LIB_AVR32)src/font.c \
 $(LIB_AVR32)src/i2c.c \

@@ -28,6 +28,7 @@
 #ifndef _ALEPH_BEES_OPERATOR_ID_MAPPING_H_
 #define _ALEPH_BEES_OPERATOR_ID_MAPPING_H_
 
+#include <stddef.h>  // For NULL
 #include "types.h"
 #include "op.h"
 

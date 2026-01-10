@@ -115,13 +115,13 @@ static u16 remap_output_index(
       u16 newOutputIdx = oldOutputIdx + cumulative_shift;
       
       #ifdef PRINT_SCENE_CONVERT
-      // print_dbg("\r\n  Remap output: ");
-      // print_dbg_ulong(oldOutputIdx);
-      // print_dbg(" -> ");
-      // print_dbg_ulong(newOutputIdx);
-      // print_dbg(" (shift: ");
-      // print_dbg_ulong(cumulative_shift);
-      // print_dbg(")");
+      print_dbg("\r\n  Remap output: ");
+      print_dbg_ulong(oldOutputIdx);
+      print_dbg(" -> ");
+      print_dbg_ulong(newOutputIdx);
+      print_dbg(" (shift: ");
+      print_dbg_ulong(cumulative_shift);
+      print_dbg(")");
       #endif
       
       conversionStats.numOutputsShifted++;
@@ -174,17 +174,17 @@ u8 scene_validate_converted(const u8* pickle) {
 
 u8 scene_convert_v07_to_v08(u8* pickle, u32 pickleSize) {
   if (pickle == NULL || pickleSize == 0) {
-    // print_dbg("\r\n [SCENE_CONVERT] Error: null pickle or zero size");
+    print_dbg("\r\n [SCENE_CONVERT] Error: null pickle or zero size");
     return 0;
   }
   
   // Reset stats
   memset(&conversionStats, 0, sizeof(SceneConversionStats));
   
-  // print_dbg("\r\n");
-  // print_dbg("\r\n ====================================");
-  // print_dbg("\r\n  Scene Conversion: 0.7.1 -> 0.8.x");
-  // print_dbg("\r\n ====================================");
+  print_dbg("\r\n");
+  print_dbg("\r\n ====================================");
+  print_dbg("\r\n  Scene Conversion: 0.7.1 -> 0.8.x");
+  print_dbg("\r\n ====================================");
   
   // TODO: Implement actual conversion logic
   // Steps:
@@ -194,8 +194,8 @@ u8 scene_convert_v07_to_v08(u8* pickle, u32 pickleSize) {
   // 4. Remap output indices (complex - cumulative shifts)
   // 5. Rewrite pickle data
   
-  // print_dbg("\r\n [SCENE_CONVERT] Conversion not yet implemented");
-  // print_dbg("\r\n [SCENE_CONVERT] This is a placeholder stub");
+  print_dbg("\r\n [SCENE_CONVERT] Conversion not yet implemented");
+  print_dbg("\r\n [SCENE_CONVERT] This is a placeholder stub");
   
   conversionStats.hadErrors = 0;
   conversionStats.numOperatorsConverted = 0;

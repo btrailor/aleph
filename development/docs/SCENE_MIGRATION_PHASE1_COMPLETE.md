@@ -384,7 +384,6 @@ feature/scene-migration-0.7.1-to-0.8.x
 
 ---
 
-**Completed by**: GitHub Copilot (Claude Sonnet 4.5)  
 **Analysis duration**: ~2 hours  
 **Lines of analysis**: ~2000+ (code + docs)  
 **Confidence level**: High - all data extracted from source

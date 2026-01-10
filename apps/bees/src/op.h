@@ -111,9 +111,6 @@ typedef enum {
   eOpList4,
   //  eOpMidiBend,
   //  eOpMidiTouch,
-  eOpCkdiv,
-  eOpLinlin,
-  eOpList4,
   numOpClasses // dummy/count 
 } op_id_t;
 

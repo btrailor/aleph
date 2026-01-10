@@ -97,7 +97,7 @@ static const OpOutputChangeMap outputChanges[] = {
   // Verification: op_midi_out_cc.c has numOutputs = 1 in 0.8.x
   { 
     .op_id_v07      = 0xFF,           // TODO: Get from 0.7.1 enum
-    .op_id_v08      = eOpMidiOutCc,   // From current op.h
+    .op_id_v08      = eOpMidiOutCC,   // From current op.h (capital CC)
     .op_name        = "midi_out_cc",
     .num_outputs_v07 = 0,
     .num_outputs_v08 = 1,
