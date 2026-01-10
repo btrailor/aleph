@@ -28,6 +28,7 @@
 #include "flash_bees.h"
 #include "global.h"
 #include "memory.h"
+#include "scene_convert.h"
 #include "pages.h"
 #include "net_protected.h"
 #include "preset.h"
@@ -209,6 +210,28 @@ void scene_read_buf(void) {
 
   // Set flag for connection remapping if loading v0.7 scene  
   needsConnectionRemapping = (sceneData->desc.beesVersion.maj == 0 && sceneData->desc.beesVersion.min == 7) ? 1 : 0;
+
+  // Convert 0.7.1 scene format to 0.8.x if needed
+  if (needsConnectionRemapping) {
+    print_dbg("\r\n Detected 0.7.1 scene format, converting to 0.8.x...");
+    
+    // Calculate remaining pickle size (from src to end of pickle buffer)
+    u32 remainingSize = SCENE_PICKLE_SIZE - (src - sceneData->pickle);
+    
+    if (!scene_convert_v07_to_v08((u8*)src, remainingSize)) {
+      print_dbg("\r\n ERROR: Scene conversion failed!");
+      // Continue anyway - conversion is still a stub
+    } else {
+      print_dbg("\r\n Scene conversion successful");
+      const SceneConversionStats* stats = scene_get_conversion_stats();
+      print_dbg("\r\n  Operators converted: ");
+      print_dbg_ulong(stats->numOperatorsConverted);
+      print_dbg("\r\n  Connections remapped: ");
+      print_dbg_ulong(stats->numConnectionsRemapped);
+      print_dbg("\r\n  Outputs shifted: ");
+      print_dbg_ulong(stats->numOutputsShifted);
+    }
+  }
 
  // read module name
   // target is temp module name buffer, so we can run a comparison 
