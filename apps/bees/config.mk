@@ -139,7 +139,9 @@ INC_PATH += \
 	$(APP_DIR)	           \
 	$(APP_DIR)/src \
 	$(APP_DIR)/../../common \
-	$(APP_DIR)/../../../avr32-toolchain-linux/include
+	$(APP_DIR)/../../../avr32-toolchain-linux/include \
+	$(PRJ_PATH)/../src/usb/cdc \
+	$(PRJ_PATH)/common/services/usb/class/cdc
 
 # Additional search paths for libraries.
 LIB_PATH += 

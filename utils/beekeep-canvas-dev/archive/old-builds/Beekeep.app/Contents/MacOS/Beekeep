@@ -1,0 +1,12 @@
+#!/bin/bash
+# Launch wrapper for Beekeep
+
+# Get the directory of this script
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Set up library path
+export DYLD_LIBRARY_PATH="$DIR/../Frameworks:$DYLD_LIBRARY_PATH"
+export DYLD_FALLBACK_LIBRARY_PATH="$DIR/../Frameworks:$DYLD_FALLBACK_LIBRARY_PATH"
+
+# Launch the actual application
+exec "$DIR/Beekeep_binary" "$@"

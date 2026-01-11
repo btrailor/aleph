@@ -36,6 +36,8 @@
 #include "scene.h"
 #include "types.h"
 
+// external variable for scene recall state
+extern u8 recallingScene;
 
 #define DEFAULT_SCENE_NAME "default"
 #define CLEAN_SCENE_NAME "clean"
@@ -338,6 +340,13 @@ void scene_read_buf(void) {
   render_boot("reading network");
   print_dbg("\r\n unpickling network for scene recall...");
   src = net_unpickle(src);
+  
+  if(src == NULL) {
+    print_dbg("\r\n ERROR: network unpickling failed, scene load aborted");
+    render_boot("ERROR: scene load failed");
+    app_resume();
+    return;
+  }
     
   // unpickle presets
   render_boot("reading presets");
@@ -353,7 +362,10 @@ void scene_read_buf(void) {
 #ifdef BEEKEEP
 #else
   render_boot("sending param values");
+  // Set recallingScene flag to prevent operator handlers from interfering
+  recallingScene = 1;
   net_send_params();
+  recallingScene = 0;
 #endif
 
   print_dbg("\r\n sent new parameter values");

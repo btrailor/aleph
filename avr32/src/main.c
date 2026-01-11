@@ -112,13 +112,18 @@ static void handler_FtdiDisconnect(s32 data) {
 
 static void handler_CdcConnect(s32 data) {
   if(!launch) {
+    // print_dbg("\r\n got CDC monome device connection, saving flag for app launch");
     cdcConnect = 1;
   }
   cdc_setup();
 }
 
 static void handler_CdcDisconnect(s32 data) {
-  cdc_disconnect();
+    cdcConnect = 0;
+    cdc_disconnect();
+    /// CDC disconnection - assume this is monome disconnect
+    event_t e = {.type = kEventMonomeDisconnect };
+    event_post(&e);
 }
 
 static void handler_MonomeConnect(s32 data) {
@@ -328,6 +333,10 @@ void check_startup(void) {
             // re-send connection events if we got any
 	    if(ftdiConnect) {
 	      e1.type = kEventFtdiConnect;
+	      event_post(&e1);
+	    }
+	    if(cdcConnect) {
+	      e1.type = kEventCdcConnect;
 	      event_post(&e1);
 	    }
 	    if (monomeConnectMain) {
