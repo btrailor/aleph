@@ -800,6 +800,67 @@ scene_load: conversion complete, X operators created
 
 ---
 
+## Colima/Docker File System Cache Issues
+
+### Symptom: "File Shorter Than Expected"
+
+If you see compilation errors like:
+
+```
+warning: ../../common/module_common.h is shorter than expected
+error: 'MODULE_NAME_LEN' undeclared here (not in a function)
+```
+
+And files show 0 lines inside Docker but normal size on host:
+
+```bash
+# Inside container - WRONG:
+$ wc -l /aleph/common/module_common.h
+0 /aleph/common/module_common.h
+
+# On host - correct:
+$ wc -l common/module_common.h
+18 common/module_common.h
+```
+
+### Root Cause
+
+**Colima sshfs mount has stale file system cache**. This happens after:
+
+- Directory renames or moves
+- Extended periods without restart
+- File operations that don't sync with VM
+
+### Fix: Restart Colima
+
+```bash
+colima stop && sleep 3 && colima start
+```
+
+Wait 10-15 seconds for full startup, then retry build.
+
+### Verification
+
+Test file readability inside Docker:
+
+```bash
+docker run --rm -v "$(pwd):/aleph" aleph-builder:latest \
+  bash -c "wc -l /aleph/common/module_common.h"
+```
+
+Should show correct line count (not 0).
+
+### Alternative: Use VirtioFS
+
+Switch Colima to VirtioFS (more reliable than sshfs):
+
+```bash
+colima delete  # Warning: destroys VM
+colima start --mount-type virtiofs --vm-type vz
+```
+
+---
+
 ## Support
 
 **If build still fails**:

@@ -28,3 +28,14 @@ test-*.sh
 
 # macOS
 .DS_Store
+
+# Debug and log files
+*.log
+aleph-debug*.log
+build_output.log
+
+# Temporary analysis scripts
+check_scene_version.py
+parse_scene.py
+scan_scene.py
+cleanup-duplicates.sh

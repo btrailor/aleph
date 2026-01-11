@@ -1,10 +1,12 @@
 # CDC Grid Support for Aleph - Work Summary
 
+> **UPDATE (January 2026):** The issues documented here were eventually resolved. See [CDC_MERGE_COMPLETE_2026-01-11.md](./CDC_MERGE_COMPLETE_2026-01-11.md) for the final working implementation that was merged into develop.
+
 ## Project Goal
 
 Add support for modern monome grid devices (USB-C, VID 0x0483) which use CDC (Communications Device Class) USB transport instead of the legacy FTDI transport used by older grids.
 
-## Current Status: BLOCKED
+## Status at Time of Writing: BLOCKED (November 2025)
 
 Grid enumerates successfully via CDC driver, but remains non-functional due to transport layer confusion between CDC and FTDI.
 
