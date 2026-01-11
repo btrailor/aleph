@@ -42,6 +42,7 @@ test-*.sh
 # Beekeep build artifacts
 utils/beekeep/build/
 utils/beekeep-canvas-dev/archive/
+utils/beekeep_juce/Builds/MacOSX/build/
 
 # Debug and log files
 *.log
