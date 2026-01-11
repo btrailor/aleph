@@ -14,6 +14,7 @@ Successfully migrated to new stable branch workflow with `develop` as the primar
 ```
 
 **Branch state**:
+
 - All documentation updates committed
 - Param debug logging added (for scene migration diagnosis)
 - libavr32 pinned to commit 02469a2 (aleph-cdc-compat)
@@ -23,6 +24,7 @@ Successfully migrated to new stable branch workflow with `develop` as the primar
 ### 2. Reverted False Fix
 
 **Removed TWI driver exclusion**:
+
 - Initially removed TWI from build as "fix" for compilation errors
 - Realized: Compilation errors were due to Docker volume mount bug, not TWI
 - TWI works fine - reverted the removal
@@ -31,6 +33,7 @@ Successfully migrated to new stable branch workflow with `develop` as the primar
 ### 3. Verified Submodule Configuration
 
 **.gitmodules tracking aleph-cdc-compat**:
+
 ```
 [submodule "libavr32"]
     path = libavr32
@@ -39,6 +42,7 @@ Successfully migrated to new stable branch workflow with `develop` as the primar
 ```
 
 **libavr32 state**:
+
 - Commit: 02469a2 (Fix aleph build compatibility)
 - Branch: aleph-cdc-compat
 - Status: Clean, no uncommitted changes
@@ -98,13 +102,13 @@ git push fork --delete feature/scene-migration-0.7.1-to-0.8.x
 ✅ .gitmodules configured correctly  
 ✅ All changes committed (no dirty state)  
 ✅ Documentation comprehensive  
-✅ Clean baseline for future work  
+✅ Clean baseline for future work
 
 ## What's Still Blocked
 
 ❌ Docker build system (volume mount bug)  
 ❌ Cannot test param debug logging  
-❌ Cannot build new firmware  
+❌ Cannot build new firmware
 
 **Solution**: Update Docker Desktop to 24.x+ or use Linux build machine
 
@@ -132,6 +136,7 @@ c12e7055 - Scene migration analysis complete: operator ID and output mappings
 ## Going Forward
 
 **Daily workflow** (see DEVELOPMENT_CHECKLIST.md):
+
 1. Start from develop
 2. Verify libavr32 is clean and on aleph-cdc-compat
 3. Create feature branch (optional) or work on develop
@@ -139,12 +144,14 @@ c12e7055 - Scene migration analysis complete: operator ID and output mappings
 5. Push to fork
 
 **If libavr32 changes needed**:
+
 1. Make changes in libavr32/
 2. Commit immediately to aleph-cdc-compat
 3. Push to libavr32 fork
 4. Return to parent repo, commit submodule pointer update
 
 **Branch naming**:
+
 - `feature/` - New features
 - `bugfix/` - Bug fixes
 - `docs/` - Documentation only
@@ -152,6 +159,7 @@ c12e7055 - Scene migration analysis complete: operator ID and output mappings
 ## Success!
 
 The git workflow migration is complete. You now have a stable `develop` branch as your development baseline with:
+
 - Clean state
 - Stable libavr32
 - Comprehensive documentation
