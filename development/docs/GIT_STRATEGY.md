@@ -1,27 +1,189 @@
 # Aleph Development Repository Structure
 
+**Updated**: 2026-01-11 - Revised for stability
+
 ## Repository Purpose
 
-This repository tracks our Phase 1 development work for BEES 1.0, including:
+This repository tracks BEES firmware development, including:
 
-- Development environment setup and documentation
+- Firmware source code (apps/bees, modules, dsp, etc.)
+- libavr32 hardware abstraction layer (submodule)
+- Development environment (Docker) and documentation
 - Analysis and planning documents
-- Build scripts and Docker configurations
-- Source code changes and improvements (in aleph/ subdirectory)
+- Build scripts and configurations
 
-## Git Branch Strategy
+## Git Branch Strategy (REVISED)
 
 ### Main Branches
 
-- `main` - Our development branch with documentation and environment
-- `source-sync` - Clean sync with boq's repository for source code
-- `feature/*` - Individual feature development branches
+```
+main          - Stable, tested releases (v0.8.3, v0.8.4, etc.)
+  └── develop - Active development, always buildable
+      ├── feature/cdc-support
+      ├── feature/scene-migration
+      └── [other features]
+```
+
+**`main` branch**:
+
+- Only merge complete, tested features
+- Always builds successfully
+- Tagged releases: v0.8.3, v0.8.4, etc.
+- Represents "production ready" code
+
+**`develop` branch** (NEW - recommended):
+
+- Default branch for active development
+- Always maintains buildable state
+- libavr32 pinned to known-good commit (aleph-cdc-compat)
+- All feature branches created from here
+- All features merge here first, then to main when stable
+
+**`feature/*` branches**:
+
+- Created from `develop`
+- Short-lived (days to weeks)
+- Merged back to `develop` when complete
+- Deleted after successful merge
+
+### Legacy Branches (Being Phased Out)
+
+- `dev` - Old development branch
+- `cdc-dev` - CDC work (merge to feature/cdc-support)
+- `beekeep-m1` - Beekeep work
+- `feature/scene-migration-0.7.1-to-0.8.x` - Current work
 
 ### Remote Configuration
 
-- `origin` - Your GitHub fork (brettgershon/aleph) - for your development work
-- `upstream-boq` - boq's repository - for source code sync and potential contributions
-- `upstream-monome` - Official monome repository - for official updates
+- `origin` - Your GitHub fork (brettgershon/aleph)
+- `upstream` or `monome` - Official monome repository
+
+## Workflow
+
+### Starting New Feature
+
+```bash
+# 1. Start from develop
+git checkout develop
+git pull origin develop
+
+# 2. Verify libavr32 is stable
+cd libavr32
+git checkout aleph-cdc-compat
+git log -1  # Should show: 02469a2 or newer
+cd ..
+
+# 3. Create feature branch
+git checkout -b feature/my-new-feature
+
+# 4. Work and commit regularly
+```
+
+### During Development
+
+**Commit often**:
+
+```bash
+git add [files]
+git commit -m "[Area]: [what changed]"
+git push origin feature/my-new-feature
+```
+
+**If modifying libavr32**:
+
+```bash
+cd libavr32
+git add .
+git commit -m "Fix: [description]"
+git push origin aleph-cdc-compat
+cd ..
+git add libavr32
+git commit -m "Update libavr32: [description]"
+```
+
+### Completing Feature
+
+```bash
+# 1. Ensure all changes committed
+git status  # Should be clean
+
+# 2. Test build and on hardware
+
+# 3. Merge to develop
+git checkout develop
+git pull origin develop
+git merge --no-ff feature/my-new-feature
+git push origin develop
+
+# 4. Delete feature branch
+git branch -d feature/my-new-feature
+git push origin --delete feature/my-new-feature
+```
+
+### Releasing
+
+```bash
+# When develop is stable and ready:
+git checkout main
+git pull origin main
+git merge --no-ff develop
+git tag -a v0.8.4 -m "Release 0.8.4: [feature summary]"
+git push origin main --tags
+
+# Create GitHub release with:
+# - Tag: v0.8.4
+# - Binary: apps/bees/aleph-bees.hex
+# - Changelog
+```
+
+## libavr32 Submodule Management
+
+### Critical Rules
+
+1. **Always work on `aleph-cdc-compat` branch**
+2. **Commit changes immediately** - never leave uncommitted
+3. **Never use `git submodule update --remote`** (overwrites your changes)
+4. **Document all changes** in commit messages
+
+### Setup (One-Time)
+
+```bash
+cd libavr32
+git checkout -b aleph-cdc-compat
+git remote add origin https://github.com/[your-fork]/libavr32.git
+git push -u origin aleph-cdc-compat
+```
+
+### Daily Use
+
+```bash
+# Before building
+cd libavr32
+git checkout aleph-cdc-compat
+git status  # Should be clean
+cd ..
+
+# After modifying libavr32 files
+cd libavr32
+git add .
+git commit -m "Fix: ..."
+git push origin aleph-cdc-compat
+cd ..
+git add libavr32  # Updates submodule pointer in parent repo
+git commit -m "Update libavr32 submodule"
+```
+
+### Checking Submodule State
+
+```bash
+# What commit is pinned?
+git ls-tree HEAD libavr32
+
+# Is submodule in expected state?
+cd libavr32
+git log -1 --oneline
+git status
+```
 
 ## File Organization
 
