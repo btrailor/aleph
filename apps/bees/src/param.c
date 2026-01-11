@@ -93,8 +93,13 @@ const u8* param_unpickle(pnode_t* pnode, const u8* src) {
   src = unpickle_32(src, &val);
   pnode->data.value = (ParamValue)val;
 
-  print_dbg("\r\n unpickling param, val: 0x"); 
+  print_dbg("\r\n [PARAM_DEBUG] unpickling param idx:");
+  print_dbg_ulong(pnode->idx);
+  print_dbg(" val: 0x"); 
   print_dbg_hex(val);
+  print_dbg(" (dec: ");
+  print_dbg_ulong((u32)val);
+  print_dbg(")");
 
 
   // load play-inclusion 
@@ -146,24 +151,55 @@ const u8* pdesc_unpickle(ParamDesc* pdesc, const u8* src) {
     pdesc->label[i] = *src;
     ++src;
   }
+  
+  print_dbg("\r\n [PDESC_DEBUG] label: '");
+  print_dbg((char*)pdesc->label);
+  print_dbg("'");
 
   // store type
   // pad for alignment
   src = unpickle_32(src, &val);
   pdesc->type = (u8)val;
   
+  print_dbg(" type:");
+  print_dbg_ulong(pdesc->type);
+  print_dbg(" (");
+  switch(pdesc->type) {
+    case eParamTypeBool: print_dbg("Bool"); break;
+    case eParamTypeFix: print_dbg("Fix"); break;
+    case eParamTypeAmp: print_dbg("Amp"); break;
+    case eParamTypeIntegrator: print_dbg("Integrator"); break;
+    case eParamTypeNote: print_dbg("Note"); break;
+    case eParamTypeSvfFreq: print_dbg("SvfFreq"); break;
+    case eParamTypeFract: print_dbg("Fract"); break;
+    case eParamTypeShort: print_dbg("Short"); break;
+    case eParamTypeIntegratorShort: print_dbg("IntegratorShort"); break;
+    case eParamTypeLabel: print_dbg("Label"); break;
+    default: print_dbg("UNKNOWN"); break;
+  }
+  print_dbg(")");
+  
   // min
   src = unpickle_32(src, &val);
   pdesc->min = val;
+  
+  print_dbg(" min:");
+  print_dbg_hex(pdesc->min);
 
   // max
   src = unpickle_32(src, &val);
   pdesc->max = val;
+  
+  print_dbg(" max:");
+  print_dbg_hex(pdesc->max);
 
   // store radix
   // pad for alignment
   src = unpickle_32(src, &val);
   pdesc->radix = (u8)val;
+  
+  print_dbg(" radix:");
+  print_dbg_ulong(pdesc->radix);
 
   return src;
 }

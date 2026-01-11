@@ -17,6 +17,7 @@ Impact:  Complete build system failure - cannot read Makefiles or source files
 ```
 
 **Evidence**:
+
 ```bash
 $ docker run --rm -v "$(pwd):/aleph" aleph-builder ls -la /aleph/apps/bees/Makefile
 -rwxr-xr-x 1 501 dialout 1582 Jan 10 16:04 Makefile
@@ -37,11 +38,13 @@ This is NOT our code or configuration - it's a Docker bug that affects ALL file 
 ### Immediate (Choose One)
 
 1. **Update Docker Desktop to 24.x+** (Recommended)
+
    - Fixes volume mount bugs
    - Improves arm64/amd64 compatibility
    - 30-minute task
 
 2. **Build arm64-native Docker image**
+
    - Eliminates emulation entirely
    - Requires rebuilding toolchain container
    - 1-2 hour initial setup
@@ -54,6 +57,7 @@ This is NOT our code or configuration - it's a Docker bug that affects ALL file 
 ### Workaround Until Fixed
 
 Use the working build from Jan 10 23:32:
+
 ```bash
 ls -lh apps/bees/aleph-bees.hex
 # -rw-r--r-- 1 brettgershon staff 483K Jan 10 23:32 aleph-bees.hex
@@ -76,6 +80,7 @@ main (stable releases)
 ```
 
 **Benefits**:
+
 - Clear "working" baseline (develop)
 - Features isolated and short-lived
 - Easy to recover from mistakes
@@ -97,6 +102,7 @@ git commit -m "Update libavr32: [description]"
 ```
 
 **Why this matters**:
+
 - Uncommitted changes get wiped by `git checkout`
 - We lost working build state multiple times this way
 - Submodule must track aleph-cdc-compat branch
@@ -188,18 +194,21 @@ git commit -m "Add param debug logging and update documentation"
 All strategies and workflows documented in:
 
 1. **DEVELOPMENT_STABILITY_STRATEGY.md**
+
    - Root cause analysis
    - All solution options
    - Git workflow redesign
    - Daily practices
 
 2. **DEVELOPMENT_CHECKLIST.md**
+
    - Quick reference for daily work
    - Before/during/after workflows
    - Common issues and solutions
    - Emergency recovery procedures
 
 3. **GIT_STRATEGY.md** (Updated)
+
    - New branch structure
    - Feature development workflow
    - Release process
