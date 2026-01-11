@@ -13,6 +13,7 @@
 # Development toolchain (large binary downloads)
 toolchain/
 aleph/
+avr32_lib/
 
 # Build artifacts and temporary files
 "$OUTPUT_FILE"
