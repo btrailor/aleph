@@ -14,9 +14,19 @@
 toolchain/
 aleph/
 
-# Build artifacts and temporary files
+# Build artifacts and output directories
+build-output/
+firmware/
 "$OUTPUT_FILE"
 "\"$OUTPUT_FILE\""
+
+# Development directories (only on develop branch)
+development/
+dsp-block-test/
+
+# Alternative/unused build files
+Makefile.aleph
+VERSION
 
 # Development environment files (tracked in development/ instead)
 docker-compose.yml
