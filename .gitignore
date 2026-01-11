@@ -39,6 +39,10 @@ test-*.sh
 # macOS
 .DS_Store
 
+# Beekeep build artifacts
+utils/beekeep/build/
+utils/beekeep-canvas-dev/archive/
+
 # Debug and log files
 *.log
 aleph-debug*.log
