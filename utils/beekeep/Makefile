@@ -282,8 +282,14 @@ $(build-dir)test/harness.o: test/harness.c
 	$(Q)test -d $(dir $@) || mkdir -p $(dir $@)
 	gcc $(test-cflags) -Isrc -g -c $< -o $@
 
-_test_harness: $(test-base-obj) $(build-dir)test/harness.o
-	gcc $(test-base-obj) $(build-dir)test/harness.o \
+$(build-dir)test/test_network_integrity.o: test/test_network_integrity.c
+	$(Q)test -d $(dir $@) || mkdir -p $(dir $@)
+	gcc $(test-cflags) -Isrc -g -c $< -o $@
+
+test-harness-obj = $(build-dir)test/harness.o $(build-dir)test/test_network_integrity.o
+
+_test_harness: $(test-base-obj) $(test-harness-obj)
+	gcc $(test-base-obj) $(test-harness-obj) \
 		-g -o beekeep-test $(test-cflags) $(test-lflags)
 
 # ---- Convenience targets ----

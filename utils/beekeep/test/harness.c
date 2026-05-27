@@ -8,7 +8,7 @@
  * injects encoder events, and reports pass/fail for each test.
  *
  * Build: see Makefile (make test-harness or make HEADLESS=1 test)
- * Run:   ./beekeep-test  [fixtures_dir]
+ * Run:   ./beekeep-test  [fixtures_dir] [-v] [--json-out results.json]
  *
  * Exit code: 0 = all pass, non-zero = failures occurred.
  *
@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <time.h>
 
 /* avr32_sim */
 #include "app.h"
@@ -41,26 +42,169 @@
 char workingDir[256] = "";
 
 /* -------------------------------------------------------
- * Test infrastructure
+ * Runtime flags
  * -------------------------------------------------------*/
+static int s_verbose  = 0;
+static const char* s_json_out = NULL;
 
+/* -------------------------------------------------------
+ * Test infrastructure — counters
+ * -------------------------------------------------------*/
 static int s_passed = 0;
 static int s_failed = 0;
 static int s_total  = 0;
 
+/* Current group / test names (for JSON/verbose output) */
+static const char* s_current_group = "";
+static const char* s_current_test  = "";
+
+/* -------------------------------------------------------
+ * JSON result accumulation
+ * Max 256 assertion results stored for --json-out
+ * -------------------------------------------------------*/
+#define MAX_JSON_RESULTS 256
+
+typedef struct {
+    char group[64];
+    char test[128];
+    char msg[256];
+    int  passed;
+} json_result_t;
+
+static json_result_t s_json_results[MAX_JSON_RESULTS];
+static int s_json_count = 0;
+
+static void record_json(int passed, const char* msg) {
+    if (s_json_count >= MAX_JSON_RESULTS) return;
+    json_result_t* r = &s_json_results[s_json_count++];
+    strncpy(r->group, s_current_group, sizeof(r->group) - 1);
+    strncpy(r->test,  s_current_test,  sizeof(r->test)  - 1);
+    strncpy(r->msg,   msg,             sizeof(r->msg)   - 1);
+    r->passed = passed;
+}
+
+/* -------------------------------------------------------
+ * Core assertion machinery
+ * -------------------------------------------------------*/
+static void _assert_result(int passed, const char* msg,
+                           const char* file, int line) {
+    s_total++;
+    if (passed) {
+        s_passed++;
+        if (s_verbose)
+            printf("    [PASS] %s  (%s:%d)\n", msg, file, line);
+        else
+            printf("  [PASS] %s\n", msg);
+    } else {
+        s_failed++;
+        printf("  [FAIL] %s  (%s:%d)\n", msg, file, line);
+    }
+    record_json(passed, msg);
+}
+
+/* -------------------------------------------------------
+ * Assertion macros
+ * -------------------------------------------------------*/
+
+/* ASSERT_TRUE(cond) — basic truth check */
+#define ASSERT_TRUE(cond) \
+    _assert_result(!!(cond), "ASSERT_TRUE(" #cond ")", __FILE__, __LINE__)
+
+/* ASSERT_EQ(a, b) — equality; prints values on failure */
+#define ASSERT_EQ(a, b) do { \
+    long long _a = (long long)(a), _b = (long long)(b); \
+    int _ok = (_a == _b); \
+    if (!_ok) \
+        printf("  [FAIL] ASSERT_EQ(" #a ", " #b "): %lld != %lld  (%s:%d)\n", \
+               _a, _b, __FILE__, __LINE__); \
+    s_total++; \
+    if (_ok) { s_passed++; if (s_verbose) printf("    [PASS] ASSERT_EQ(" #a ", " #b ") = %lld  (%s:%d)\n", _a, __FILE__, __LINE__); \
+               else printf("  [PASS] ASSERT_EQ(" #a ", " #b ")\n"); } \
+    else { s_failed++; } \
+    record_json(_ok, "ASSERT_EQ(" #a ", " #b ")"); \
+} while(0)
+
+/* ASSERT_NE(a, b) — inequality */
+#define ASSERT_NE(a, b) do { \
+    long long _a = (long long)(a), _b = (long long)(b); \
+    int _ok = (_a != _b); \
+    if (!_ok) \
+        printf("  [FAIL] ASSERT_NE(" #a ", " #b "): both == %lld  (%s:%d)\n", \
+               _a, __FILE__, __LINE__); \
+    s_total++; \
+    if (_ok) { s_passed++; if (s_verbose) printf("    [PASS] ASSERT_NE(" #a ", " #b ")  (%s:%d)\n", __FILE__, __LINE__); \
+               else printf("  [PASS] ASSERT_NE(" #a ", " #b ")\n"); } \
+    else { s_failed++; } \
+    record_json(_ok, "ASSERT_NE(" #a ", " #b ")"); \
+} while(0)
+
+/* Legacy CHECK/PASS/FAIL — kept for backward compatibility */
 #define PASS(msg) do { \
     printf("  [PASS] %s\n", msg); \
     s_passed++; s_total++; \
+    record_json(1, msg); \
 } while(0)
 
 #define FAIL(msg) do { \
     printf("  [FAIL] %s\n", msg); \
     s_failed++; s_total++; \
+    record_json(0, msg); \
 } while(0)
 
 #define CHECK(cond, msg) do { \
     if (cond) { PASS(msg); } else { FAIL(msg); } \
 } while(0)
+
+/* -------------------------------------------------------
+ * Test grouping macros
+ * -------------------------------------------------------*/
+#define TEST_GROUP(name) do { \
+    s_current_group = (name); \
+    printf("\n┌─ GROUP: %s\n", name); \
+} while(0)
+
+#define TEST(name) do { \
+    s_current_test = (name); \
+    printf("│  TEST: %s\n", name); \
+} while(0)
+
+/* -------------------------------------------------------
+ * JSON output writer
+ * -------------------------------------------------------*/
+static void write_json_results(const char* path) {
+    FILE* f = fopen(path, "w");
+    if (!f) {
+        fprintf(stderr, "[harness] warning: could not write JSON to %s\n", path);
+        return;
+    }
+
+    fprintf(f, "{\n");
+    fprintf(f, "  \"summary\": {\n");
+    fprintf(f, "    \"passed\": %d,\n", s_passed);
+    fprintf(f, "    \"failed\": %d,\n", s_failed);
+    fprintf(f, "    \"total\": %d\n",   s_total);
+    fprintf(f, "  },\n");
+    fprintf(f, "  \"results\": [\n");
+
+    for (int i = 0; i < s_json_count; i++) {
+        json_result_t* r = &s_json_results[i];
+        fprintf(f, "    {\n");
+        fprintf(f, "      \"group\": \"%s\",\n", r->group);
+        fprintf(f, "      \"test\": \"%s\",\n",  r->test);
+        fprintf(f, "      \"msg\": \"%s\",\n",   r->msg);
+        fprintf(f, "      \"passed\": %s\n",     r->passed ? "true" : "false");
+        fprintf(f, "    }%s\n", (i < s_json_count - 1) ? "," : "");
+    }
+
+    fprintf(f, "  ]\n");
+    fprintf(f, "}\n");
+    fclose(f);
+    printf("[harness] JSON results written to: %s\n", path);
+}
+
+/* -------------------------------------------------------
+ * Utility helpers
+ * -------------------------------------------------------*/
 
 /* Re-initialise network state between tests.
  * NOTE: scene_read_buf() internally calls net_deinit()+net_init() to
@@ -114,6 +258,9 @@ static void drain_events(int max_iters) {
  * -------------------------------------------------------*/
 static void test_empty_scene(const char* fixtures_dir) {
     u8 ret;
+
+    TEST_GROUP("scene_load");
+    TEST("load_empty_scene");
     printf("\n[T1] empty.scn — load and basic sanity\n");
 
     reset_net();
@@ -129,8 +276,7 @@ static void test_empty_scene(const char* fixtures_dir) {
     /* After loading an empty scene, only system-installed operators exist.
      * BEES boots with 12 system ops (4 ENC, 6 SW, 1 MONOME_GRID_CLASSIC,
      * 1 PRESET).  A user-empty scene serialises exactly those 12. */
-    CHECK(net_num_ops() == 12,
-          "empty scene: 12 system operators in network (no user ops)");
+    ASSERT_EQ(net_num_ops(), 12);
 }
 
 /* -------------------------------------------------------
@@ -142,6 +288,8 @@ static void test_two_op_network(const char* fixtures_dir) {
     s16 target;
     u16 out0;
 
+    TEST_GROUP("scene_load");
+    TEST("load_two_op_network");
     printf("\n[T2] two_op_network.scn — two ops, one connection\n");
 
     reset_net();
@@ -158,19 +306,17 @@ static void test_two_op_network(const char* fixtures_dir) {
     printf("  [info] numOps=%u  numOuts=%u  numIns=%u\n",
            n_ops, n_outs, n_ins);
 
-    CHECK(n_ops == 14,  "two_op_network: 14 operators (12 system + 2 user)");
-    CHECK(n_outs >= 1, "two_op_network: at least 1 output node exists");
-    CHECK(n_ins  >= 1, "two_op_network: at least 1 input node exists");
+    ASSERT_EQ(n_ops, 14);
+    ASSERT_TRUE(n_outs >= 1);
+    ASSERT_TRUE(n_ins  >= 1);
 
     /* Verify the connection: output 0 of the network should have a
-     * non-negative (connected) target.  The fixture generator connected
-     * the very first output to the very first input of the second op. */
+     * non-negative (connected) target. */
     if (n_outs > 0) {
-        /* Find the first output that belongs to op index 0 */
         out0   = net_op_out_idx(0, 0);
         target = net_get_target(out0);
         printf("  [info] out[%u] target = %d\n", out0, target);
-        CHECK(target >= 0, "two_op_network: first output is connected");
+        ASSERT_TRUE(target >= 0);
     } else {
         FAIL("two_op_network: no outputs present, cannot check connection");
     }
@@ -184,6 +330,8 @@ static void test_encoder_inject(void) {
     u16 in_idx;
     event_t e;
 
+    TEST_GROUP("event_injection");
+    TEST("encoder_inject");
     printf("\n[T3] encoder inject — turn encoder 0, verify input value\n");
 
     reset_net();
@@ -194,7 +342,7 @@ static void test_encoder_inject(void) {
         FAIL("encoder inject: could not add eOpEnc operator");
         return;
     }
-    CHECK(enc_op >= 0, "encoder inject: eOpEnc operator added");
+    ASSERT_NE(enc_op, -1);
 
     /* The ENC op's first input is the 'val' input.
      * Get its global index and record value before event. */
@@ -214,16 +362,12 @@ static void test_encoder_inject(void) {
     printf("  [info] eOpEnc in[%u]: before=%d  after=%d\n",
            in_idx, (int)val_before, (int)val_after);
 
-    /* The value may or may not change depending on how the ENC op
-     * is wired to the encoder event handler.  We check that the
-     * queue processed cleanly (no crash) and that a handler was called. */
-    CHECK(1, "encoder inject: event posted and processed without crash");
+    /* The event queue processes cleanly — no crash */
+    ASSERT_TRUE(1);
 
-    /* If the value changed, that's great — report it */
     if (val_after != val_before) {
         PASS("encoder inject: input value changed after encoder event");
     } else {
-        /* Not a failure — ENC op may need to be connected and page set */
         printf("  [info] value unchanged (ENC op may need page/play context)\n");
     }
 }
@@ -235,6 +379,8 @@ static void test_save_scene(const char* fixtures_dir) {
     char out_path[512];
     int exists;
 
+    TEST_GROUP("scene_persistence");
+    TEST("save_scene");
     printf("\n[T4] save scene — write output.scn and verify file exists\n");
 
     reset_net();
@@ -246,23 +392,19 @@ static void test_save_scene(const char* fixtures_dir) {
     scene_set_name("harness_output");
     scene_set_module_name("NONE");
 
-    /* Build full path for the output scene */
     snprintf(out_path, sizeof(out_path), "%s/output.scn", fixtures_dir);
 
-    /* files_store_scene_name takes a full path or workingDir-relative name.
-     * Here we pass the absolute path directly. */
     set_working_dir(fixtures_dir);
     files_store_scene_name(out_path);
 
     exists = file_exists_nonempty(out_path);
-    CHECK(exists, "save scene: output.scn created and non-empty");
+    ASSERT_TRUE(exists);
 
     if (exists) {
         struct stat st;
         stat(out_path, &st);
         printf("  [info] output.scn size = %ld bytes\n", (long)st.st_size);
-        CHECK(st.st_size == (long)sizeof(sceneData_t),
-              "save scene: output.scn has expected sceneData_t size");
+        ASSERT_EQ(st.st_size, (long)sizeof(sceneData_t));
     }
 }
 
@@ -274,6 +416,8 @@ static void test_roundtrip(const char* fixtures_dir) {
     u16 ops_before, ops_after;
     u8 ret;
 
+    TEST_GROUP("scene_persistence");
+    TEST("roundtrip_save_reload");
     printf("\n[T5] round-trip — save 2-op scene, reload, verify op count\n");
 
     reset_net();
@@ -285,7 +429,6 @@ static void test_roundtrip(const char* fixtures_dir) {
     scene_set_name("roundtrip");
     scene_set_module_name("NONE");
 
-    /* Save and reload — scene_read_buf() clears the net internally. */
     snprintf(out_path, sizeof(out_path), "%s/roundtrip.scn", fixtures_dir);
     set_working_dir(fixtures_dir);
     files_store_scene_name(out_path);
@@ -297,15 +440,39 @@ static void test_roundtrip(const char* fixtures_dir) {
     printf("  [info] ops_before=%u  ops_after=%u  ret=%u\n",
            ops_before, ops_after, ret);
 
-    CHECK(ops_after == ops_before,
-          "round-trip: reloaded op count matches saved op count (system + user ops)");
+    ASSERT_EQ(ops_after, ops_before);
+}
+
+/* -------------------------------------------------------
+ * Network integrity tests (from test_network_integrity.c)
+ * -------------------------------------------------------*/
+extern void run_network_integrity_tests(void);
+
+/* -------------------------------------------------------
+ * Argument parsing
+ * -------------------------------------------------------*/
+static const char* parse_args(int argc, char** argv,
+                               const char** json_out_path) {
+    const char* fixtures_dir = "test/fixtures";
+    *json_out_path = NULL;
+
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
+            s_verbose = 1;
+        } else if ((strcmp(argv[i], "--json-out") == 0) && (i + 1 < argc)) {
+            *json_out_path = argv[++i];
+        } else if (argv[i][0] != '-') {
+            fixtures_dir = argv[i];
+        }
+    }
+    return fixtures_dir;
 }
 
 /* -------------------------------------------------------
  * main
  * -------------------------------------------------------*/
 int main(int argc, char** argv) {
-    const char* fixtures_dir = (argc >= 2) ? argv[1] : "test/fixtures";
+    const char* fixtures_dir = parse_args(argc, argv, &s_json_out);
 
     setbuf(stdout, NULL);
     setbuf(stderr, NULL);
@@ -313,7 +480,10 @@ int main(int argc, char** argv) {
     printf("╔══════════════════════════════════════════════╗\n");
     printf("║  Aleph BEES Headless Test Harness            ║\n");
     printf("╚══════════════════════════════════════════════╝\n");
-    printf("fixtures: %s\n\n", fixtures_dir);
+    printf("fixtures: %s\n", fixtures_dir);
+    if (s_verbose)   printf("mode: verbose\n");
+    if (s_json_out)  printf("json-out: %s\n", s_json_out);
+    printf("\n");
 
     /* Boot BEES once */
     printf("[harness] app_init()...\n");
@@ -321,18 +491,25 @@ int main(int argc, char** argv) {
     printf("[harness] app_launch()...\n");
     app_launch(1);
 
-    /* ---- Run tests ---- */
+    /* ---- Core test groups ---- */
     test_empty_scene(fixtures_dir);
     test_two_op_network(fixtures_dir);
     test_encoder_inject();
     test_save_scene(fixtures_dir);
     test_roundtrip(fixtures_dir);
 
+    /* ---- Network integrity tests ---- */
+    run_network_integrity_tests();
+
     /* ---- Summary ---- */
     printf("\n════════════════════════════════════════════════\n");
-    printf("  Results: %d/%d passed  (%d failed)\n",
-           s_passed, s_total, s_failed);
+    printf("  Results: %d passed, %d failed, %d total\n",
+           s_passed, s_failed, s_total);
     printf("════════════════════════════════════════════════\n");
+
+    if (s_json_out) {
+        write_json_results(s_json_out);
+    }
 
     return (s_failed > 0) ? 1 : 0;
 }
