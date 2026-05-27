@@ -1,0 +1,156 @@
+name: Aleph Simulator CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  # ----------------------------------------------------------------
+  # Job 1: Build headless simulator + run tests on macOS
+  # ----------------------------------------------------------------
+  beekeep-headless-macos:
+    name: beekeep headless (macOS)
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cache Homebrew packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /opt/homebrew/Cellar/jansson
+            /opt/homebrew/Cellar/pkg-config
+          key: ${{ runner.os }}-brew-jansson-pkgconfig-${{ hashFiles('.github/workflows/sim-ci.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-brew-jansson-pkgconfig-
+
+      - name: Install dependencies
+        run: |
+          brew install jansson pkg-config || true
+
+      - name: Build headless simulator
+        run: |
+          cd utils/beekeep
+          make HEADLESS=1 MOCK_BFIN=1
+
+      - name: Build fixture generator
+        run: |
+          cd utils/beekeep
+          make HEADLESS=1 MOCK_BFIN=1 _make_fixtures
+
+      - name: Generate test fixtures
+        run: |
+          cd utils/beekeep
+          ./make_fixtures
+
+      - name: Build test harness
+        run: |
+          cd utils/beekeep
+          make HEADLESS=1 MOCK_BFIN=1 _test_harness
+
+      - name: Run test harness
+        run: |
+          cd utils/beekeep
+          ./beekeep-test test/fixtures --json-out test-results-macos.json
+          echo "Exit code: $?"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-macos
+          path: utils/beekeep/test-results-macos.json
+          if-no-files-found: warn
+
+  # ----------------------------------------------------------------
+  # Job 2: Build headless simulator + run tests on Ubuntu
+  # ----------------------------------------------------------------
+  beekeep-headless-ubuntu:
+    name: beekeep headless (Ubuntu)
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cache apt packages
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: ${{ runner.os }}-apt-jansson-pkgconfig-${{ hashFiles('.github/workflows/sim-ci.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-apt-jansson-pkgconfig-
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libjansson-dev pkg-config
+
+      - name: Build headless simulator
+        run: |
+          cd utils/beekeep
+          make HEADLESS=1 MOCK_BFIN=1
+
+      - name: Build fixture generator
+        run: |
+          cd utils/beekeep
+          make HEADLESS=1 MOCK_BFIN=1 _make_fixtures
+
+      - name: Generate test fixtures
+        run: |
+          cd utils/beekeep
+          ./make_fixtures
+
+      - name: Build test harness
+        run: |
+          cd utils/beekeep
+          make HEADLESS=1 MOCK_BFIN=1 _test_harness
+
+      - name: Run test harness
+        run: |
+          cd utils/beekeep
+          ./beekeep-test test/fixtures --json-out test-results-ubuntu.json
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-ubuntu
+          path: utils/beekeep/test-results-ubuntu.json
+          if-no-files-found: warn
+
+  # ----------------------------------------------------------------
+  # Job 3: Build bfin_sim on macOS
+  # ----------------------------------------------------------------
+  bfin-sim-macos:
+    name: bfin_sim (macOS)
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cache Homebrew packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /opt/homebrew/Cellar/jack
+            /opt/homebrew/Cellar/liblo
+          key: ${{ runner.os }}-brew-jack-liblo-${{ hashFiles('.github/workflows/sim-ci.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-brew-jack-liblo-
+
+      - name: Install dependencies
+        run: |
+          brew install jack liblo || true
+
+      - name: Build bfin_sim
+        run: |
+          cd utils/bfin_sim
+          make
