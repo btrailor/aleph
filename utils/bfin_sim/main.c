@@ -225,7 +225,8 @@ int main (int argc, char *argv[]) {
 #ifdef WIN32
   Sleep (-1);
 #else
-  sleep (-1);
+  /* sleep(-1) is undefined on macOS (returns immediately). Use pause() loop. */
+  while (1) { pause(); }
 #endif
 
   /* this is never reached but if the program

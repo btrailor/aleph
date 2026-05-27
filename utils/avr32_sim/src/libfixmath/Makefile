@@ -2,7 +2,7 @@
 PROJECT = libfixmath
 LIB =
 SRC = .
-INC =
+INC = -I../ -I../../../../common
 
 #Compiler settings
 CPP = gcc

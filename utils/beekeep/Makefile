@@ -32,6 +32,7 @@ src += \
 	$(bees)/src/preset.c \
 	$(bees)/src/render.c \
 	$(bees)/src/scene.c \
+	$(bees)/src/scene_convert.c \
 	$(bees)/src/util.c \
 	$(bees)/src/ops/op_add.c \
 	$(bees)/src/ops/op_accum.c \
@@ -62,8 +63,6 @@ src += \
 	$(bees)/src/ops/op_list8.c \
 	$(bees)/src/ops/op_list16.c \
 	$(bees)/src/ops/op_logic.c \
-	$(bees)/src/ops/op_linlin.c \
-	$(bees)/src/ops/op_ckdiv.c \
 	$(bees)/src/ops/op_maginc.c \
 	$(bees)/src/ops/op_mem0d.c \
 	$(bees)/src/ops/op_mem1d.c \
@@ -184,6 +183,7 @@ inc = 	$(bees) \
 	$(sim)/src/usb/hid \
 	$(sim)/src/usb/mouse \
 	$(sim)/src/usb/hub \
+	../../avr32/src \
     $(pyaleph)
 
 
@@ -196,7 +196,7 @@ endif
 obj = $(addprefix $(build-dir), $(addsuffix .o,$(basename $(src))))
 
 cflags += $(foreach path,$(inc),-I$(path))
-cflags += -I/opt/homebrew/Cellar/jansson/2.14.1/include
+cflags += $(shell pkg-config --cflags jansson)
 cflags += -std=gnu99
 cflags += -D BEEKEEP=1
 cflags += -D ARCH_AVR32=1
@@ -204,24 +204,39 @@ cflags += -D DYNAMIC_NETWORK_ENABLED=1
 cflags += -g -O0
 cflags += -Wall
 
-lflags += -L/opt/homebrew/Cellar/jansson/2.14.1/lib -Bstatic -ljansson
+lflags += $(shell pkg-config --libs jansson)
 lflags += -fno-common
 
+# GTK flags (only for non-headless build)
+ifndef HEADLESS
 cflags += $(shell pkg-config --cflags gtk+-3.0)
-lflags += -Bdynamic $(shell pkg-config --libs gtk+-3.0)
+lflags += $(shell pkg-config --libs gtk+-3.0)
+endif
 
+# Headless build: swap main.c for main_headless.c and strip GTK-dependent sources
+ifdef HEADLESS
+src := $(filter-out src/main.c src/ui.c src/ui_files.c src/ui_handlers.c src/ui_lists.c src/ui_op_menu.c,$(src))
+src += src/main_headless.c
+headless-binary = beekeep-headless
+endif
 
-$(build-dir)%.o: %.c 
+$(build-dir)%.o: %.c
 	$(Q)test -d $(dir $@) || mkdir -p $(dir $@)
 	gcc $(cflags) -g -c $< -o $@
 
-target: $(obj)	
+target: $(obj)
 	gcc $(obj) -g -o $(target) $(cflags) $(lflags)
+
+headless:
+	$(MAKE) HEADLESS=1 _headless_binary
+
+_headless_binary: $(obj)
+	gcc $(obj) -g -o beekeep-headless $(cflags) $(lflags)
 
 all: beekeep
 
 clean:
-	rm $(obj)
+	rm -f $(obj)
 
 tags:
 	find . ../avr32_sim/ ../../common ../../apps/bees -name '*.[ch]' | etags -

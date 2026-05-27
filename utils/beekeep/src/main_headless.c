@@ -15,6 +15,10 @@
 #include "dot.h"
 #include "json.h"
 
+// workingDir is normally defined in ui_files.c (GTK build);
+// provide it here for the headless build.
+char workingDir[256] = "";
+
 int main (int argc, char **argv)
 {
   char path[64];
