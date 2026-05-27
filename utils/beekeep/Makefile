@@ -144,6 +144,8 @@ src += \
 	$(sim)/src/adc.c \
 	$(sim)/src/app.c \
 	$(sim)/src/bfin.c \
+	$(sim)/src/bfin_mock.c \
+	$(sim)/src/event_inject.c \
 	$(sim)/src/control.c \
 	$(sim)/src/delay.c \
 	$(sim)/src/events.c \

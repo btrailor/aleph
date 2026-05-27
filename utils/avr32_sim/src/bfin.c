@@ -28,6 +28,10 @@
 #include "util.h"
 #include "bfin.h"
 
+#ifdef MOCK_BFIN
+#include "bfin_mock.h"
+#endif
+
 //--------------------------------------
 //--- static fuction declaration
 
@@ -41,6 +45,9 @@ static void bfin_transfer_byte(u8 data);
 // wait for busy pin to clear
 void bfin_wait(void) {
 #if 1
+#ifdef MOCK_BFIN
+  bfin_mock_wait();
+#endif
 #else
   //  print_dbg("\r\n hwait: ");
   //  print_dbg_ulong(gpio_get_pin_value(BFIN_HWAIT_PIN));
@@ -57,6 +64,9 @@ void bfin_wait(void) {
 // load bfin executable from the RAM buffer
 void bfin_load_buf(void) {
 #if 1
+#ifdef MOCK_BFIN
+  bfin_mock_load_buf();
+#endif
 #else
   u64 i; /// byte index in .ldr
 
@@ -99,6 +109,9 @@ void bfin_load_buf(void) {
 //void bfin_set_param(u8 idx, f32 x ) {
 void bfin_set_param(u8 idx, fix16_t x ) {
 #if 1
+#ifdef MOCK_BFIN
+  bfin_mock_set_param(idx, x);
+#endif
 #else
   //static u32 ticks = 0;
   ParamValueCommon pval;
@@ -156,9 +169,11 @@ void bfin_set_param(u8 idx, fix16_t x ) {
 
 void bfin_get_num_params(volatile u32* num) {
 #if 1
-
+#ifdef MOCK_BFIN
+  bfin_mock_get_num_params(num);
+#else
   *num = 0;
-
+#endif
 #else
   u16 x;
 
@@ -188,6 +203,9 @@ void bfin_get_num_params(volatile u32* num) {
 
 void bfin_get_param_desc(u16 paramIdx, volatile ParamDesc* pDesc) {
 #if 1
+#ifdef MOCK_BFIN
+  bfin_mock_get_param_desc(paramIdx, pDesc);
+#endif
 #else
   ParamValueCommon pval;
   u16 x; // u16 for spi_read()
@@ -260,6 +278,9 @@ void bfin_get_param_desc(u16 paramIdx, volatile ParamDesc* pDesc) {
 // get module name
 void bfin_get_module_name(volatile char* buf) {
 #if 1
+#ifdef MOCK_BFIN
+  bfin_mock_get_module_name(buf);
+#endif
 #else
   u16 x; // u16 for spi_read()
   u8 i;
@@ -285,6 +306,9 @@ void bfin_get_module_name(volatile char* buf) {
 // get module version
 void bfin_get_module_version(ModuleVersion* vers) {
 #if 1
+#ifdef MOCK_BFIN
+  bfin_mock_get_module_version(vers);
+#endif
 #else
   u16 x;
   
@@ -324,6 +348,9 @@ void bfin_get_module_version(ModuleVersion* vers) {
 
 void bfin_enable(void) {
 #if 1
+#ifdef MOCK_BFIN
+  bfin_mock_enable();
+#endif
 #else
   // enable audio processing
   spi_selectChip(BFIN_SPI, BFIN_SPI_NPCS);
@@ -334,6 +361,9 @@ void bfin_enable(void) {
 
 void bfin_disable(void) {
 #if 1
+#ifdef MOCK_BFIN
+  bfin_mock_disable();
+#endif
 #else
   // disable audio processing
   spi_selectChip(BFIN_SPI, BFIN_SPI_NPCS);
@@ -380,6 +410,9 @@ void bfin_end_transfer(void) {
 // wait for ready status (e.g. after module init)
 void bfin_wait_ready(void) {
 #if 1
+#ifdef MOCK_BFIN
+  bfin_mock_wait_ready();
+#endif
 #else
   // use ready pin
   while( !gpio_get_pin_value(BFIN_READY_PIN) ) { 
@@ -391,7 +424,11 @@ void bfin_wait_ready(void) {
 // get parameter value
 s32 bfin_get_param(u8 idx) {
 #if 1
+#ifdef MOCK_BFIN
+    return bfin_mock_get_param(idx);
+#else
     return 0;
+#endif
 #else
   ParamValueCommon pval;
   u16 x;
