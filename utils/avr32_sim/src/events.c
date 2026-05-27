@@ -2,19 +2,18 @@
  * aleph
  *
  * simple event queue
- * disables interrupts around queue manipulation
+ *
+ * SIM CHANGES (Phase 0):
+ *   - Uncommented queue state (putIdx, getIdx, sysEvents[])
+ *   - Removed cpu_irq_disable_level / cpu_irq_enable_level calls; those are
+ *     AVR32-specific IRQ primitives that don't exist on host. On the simulator
+ *     we run single-threaded so no guard is needed.
+ *   - init_events now actually zeroes the queue.
  */
 
-// ASF
-// #include "compiler.h"
 #include "print_funcs.h"
-
-// aleph-avr32
-//#include "aleph_board.h"
-//#include "conf_tc_irq.h"
 #include "events.h"
 #include "event_types.h"
-
 
 /// NOTE: if we are ever over-filling the event queue, we have problems.
 /// making the event queue bigger not likely to solve the problems.
@@ -23,112 +22,64 @@
 // macro for incrementing an index into a circular buffer.
 #define INCR_EVENT_INDEX( x )  { if ( ++x == MAX_EVENTS ) x = 0; }
 
-// et/Put indexes inxto sysEvents[] array
-//static int putIdx = 0;
-//static int getIdx = 0;
-//
-//// The system event queue is a circular array of event records.
-//static event_t sysEvents[ MAX_EVENTS ];
+// get/put indexes into sysEvents[] array
+static int putIdx = 0;
+static int getIdx = 0;
 
-// initializes (or re-initializes)  the system event queue.
+// The system event queue is a circular array of event records.
+static event_t sysEvents[ MAX_EVENTS ];
+
+// initializes (or re-initializes) the system event queue.
 void init_events( void ) {
-#if 1
-#else
   int k;
-  
-  // set queue (circular list) to empty
+
   putIdx = 0;
   getIdx = 0;
 
-  // zero out the event records
   for ( k = 0; k < MAX_EVENTS; k++ ) {
     sysEvents[ k ].type = 0;
     sysEvents[ k ].data = 0;
   }
-#endif
 }
 
 // get next event
 // Returns non-zero if an event was available
 u8 event_next( event_t *e ) {
-#if 1
-    return 0;
-#else
   u8 status;
-  cpu_irq_disable_level(APP_TC_IRQ_PRIORITY);
-  
-  // if pointers are equal, the queue is empty... don't allow idx's to wrap!
+
+  // SIM: no IRQ guard needed (single-threaded host)
+  // if pointers are equal, the queue is empty
   if ( getIdx != putIdx ) {
     INCR_EVENT_INDEX( getIdx );
     e->type = sysEvents[ getIdx ].type;
     e->data = sysEvents[ getIdx ].data;
-    status = true;
+    status = 1;
   } else {
     e->type  = 0xff;
     e->data = 0;
-    status = false;
+    status = 0;
   }
 
-  cpu_irq_enable_level(APP_TC_IRQ_PRIORITY);
   return status;
-#endif
 }
-
 
 // add event to queue, return success status
 u8 event_post( event_t *e ) {
-#if 1
-    return 0;
-#else
-  u8 status = false;
+  u8 status = 0;
   int saveIndex;
 
-  //  print_dbg("\r\n posting event, type: ");
-  //  print_dbg_ulong(e->type);
-
-  cpu_irq_disable_level(APP_TC_IRQ_PRIORITY);
-  
-  // increment write idx, posbily wrapping
+  // SIM: no IRQ guard needed (single-threaded host)
   saveIndex = putIdx;
   INCR_EVENT_INDEX( putIdx );
-  if ( putIdx != getIdx  ) {
+  if ( putIdx != getIdx ) {
     sysEvents[ putIdx ].type = e->type;
     sysEvents[ putIdx ].data = e->data;
-    status = true;
+    status = 1;
   } else {
-    // idx wrapped, so queue is full, restore idx
+    // idx wrapped, queue is full — restore idx
     putIdx = saveIndex;
     print_dbg("\r\n event queue full!");
-  } 
-
-  cpu_irq_enable_level(APP_TC_IRQ_PRIORITY);
-  return status;
-#endif
-}
-
-
-
-//////////////////////////////////////////////////////////
-/// testing
-//u32 get_max_events(void) { return MAX_EVENTS; }
-//extern event_t* get_sys_events(void) { return (event_t*)sysEvents; }
-/*
-void print_pending_events(void) {
-  u32 i;
-  i = getIdx;
-
-  while(i != putIdx) {
-    print_dbg("\r\n  pending system events:");
-    
-    print_dbg("\r\v event at idx ");
-    print_dbg_ulong(i);
-    print_dbg(" type: ");
-    print_dbg_ulong( sysEvents[i].type);
-    print_dbg(" data: 0x");
-    print_dbg_hex(sysEvents[i].type);
-
-    INCR_EVENT_INDEX(i);
   }
+
+  return status;
 }
-*/
-//////////////////////////////
