@@ -240,3 +240,73 @@ clean:
 
 tags:
 	find . ../avr32_sim/ ../../common ../../apps/bees -name '*.[ch]' | etags -
+
+# -----------------------------------------------------------------------
+# Phase 1: Test harness and fixture generator
+# -----------------------------------------------------------------------
+# Build strategy:
+#   1.  `make HEADLESS=1` compiles all objects into the default build-dir.
+#   2.  Test targets reuse those same .o files, appending the test tool's
+#       own main .o and linking into a separate binary.
+#   3.  All test targets must be invoked with HEADLESS=1 so that the
+#       variable `src` and `obj` are set for the headless variant.
+
+# Headless object list minus its own main (used by harness + fixture gen)
+test-base-obj = $(filter-out $(build-dir)src/main_headless.o, $(obj))
+
+# Extra source: host filesystem layer
+test-base-obj += $(build-dir)$(sim)/src/filesystem_host.o
+
+# Flags for test tools (same as headless, already defined when HEADLESS=1)
+test-cflags = $(cflags)
+test-lflags = $(lflags)
+
+# Compile rule for filesystem_host (not in the default src list)
+$(build-dir)$(sim)/src/filesystem_host.o: $(sim)/src/filesystem_host.c
+	$(Q)test -d $(dir $@) || mkdir -p $(dir $@)
+	gcc $(test-cflags) -g -c $< -o $@
+
+# ---- make_fixtures binary ----
+$(build-dir)test/make_fixtures.o: test/make_fixtures.c
+	$(Q)test -d $(dir $@) || mkdir -p $(dir $@)
+	gcc $(test-cflags) -Isrc -g -c $< -o $@
+
+_make_fixtures: $(test-base-obj) $(build-dir)test/make_fixtures.o
+	gcc $(test-base-obj) $(build-dir)test/make_fixtures.o \
+		-g -o make_fixtures $(test-cflags) $(test-lflags)
+
+# ---- beekeep-test (test harness) binary ----
+$(build-dir)test/harness.o: test/harness.c
+	$(Q)test -d $(dir $@) || mkdir -p $(dir $@)
+	gcc $(test-cflags) -Isrc -g -c $< -o $@
+
+_test_harness: $(test-base-obj) $(build-dir)test/harness.o
+	gcc $(test-base-obj) $(build-dir)test/harness.o \
+		-g -o beekeep-test $(test-cflags) $(test-lflags)
+
+# ---- Convenience targets ----
+
+## make-fixtures: compile and run the fixture generator
+make-fixtures:
+	$(MAKE) HEADLESS=1 _make_fixtures
+	./make_fixtures
+
+## test-harness: compile the test harness binary (does not run it)
+test-harness:
+	$(MAKE) HEADLESS=1 _test_harness
+
+## test: build fixtures if needed, run the harness
+test:
+	$(MAKE) HEADLESS=1 _test_harness
+	@if [ ! -f test/fixtures/empty.scn ]; then \
+		$(MAKE) HEADLESS=1 _make_fixtures && ./make_fixtures; \
+	fi
+	./beekeep-test test/fixtures
+
+## test-all: full Phase 1 validation sequence
+test-all:
+	$(MAKE) HEADLESS=1
+	$(MAKE) HEADLESS=1 _make_fixtures
+	./make_fixtures
+	$(MAKE) HEADLESS=1 _test_harness
+	./beekeep-test test/fixtures
