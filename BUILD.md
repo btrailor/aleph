@@ -239,3 +239,101 @@ make aleph-bees.hex
 2. **Verify CDC grid**: Connect modern monome grid (VID 0x0483), check serial output
 3. **Test scene loading**: Load v0.8.x scenes, verify operator ID validation
 4. **Implement converter**: Finish `scene_convert_from_0_7_1()` if not yet complete
+
+---
+
+## Simulator CI & Testing (Phase 2)
+
+### CI Badge
+
+<!-- Add badge once repo has GitHub Actions enabled: -->
+<!-- ![Aleph Simulator CI](https://github.com/YOUR_ORG/aleph/actions/workflows/sim-ci.yml/badge.svg?branch=develop) -->
+
+### Automated CI
+
+A GitHub Actions workflow runs on every push and PR to `develop` and `main`:
+
+- **Job 1** — `beekeep-headless-macos`: builds and tests headless simulator on `macos-14`
+- **Job 2** — `beekeep-headless-ubuntu`: builds and tests headless simulator on `ubuntu-22.04`
+- **Job 3** — `bfin-sim-macos`: builds `bfin_sim` on `macos-14`
+
+Workflow file: `.github/workflows/sim-ci.yml`
+
+### Running Tests Locally
+
+**Quick start** (builds everything, runs all tests):
+
+```bash
+./scripts/test-sim.sh
+```
+
+**Options:**
+
+```bash
+./scripts/test-sim.sh -v                        # verbose assertion output
+./scripts/test-sim.sh --json-out results.json   # write JSON results file
+./scripts/test-sim.sh --skip-build              # reuse existing binaries
+```
+
+**Via Makefile** (from `utils/beekeep/`):
+
+```bash
+# Build headless only
+make HEADLESS=1 MOCK_BFIN=1
+
+# Build + run fixtures + run tests (full sequence)
+make test
+
+# Full Phase 1+2 validation
+make test-all
+```
+
+### Test Structure
+
+| File | Description |
+|------|-------------|
+| `test/harness.c` | Main test runner — assertions, grouping, JSON output, summary |
+| `test/test_network_integrity.c` | Network integrity tests (create/connect/delete/feedback/roundtrip) |
+| `test/make_fixtures.c` | Generates binary fixture `.scn` files used by the harness |
+| `test/fixtures/` | Generated fixture scenes |
+
+### Test Groups
+
+| Group | Tests |
+|-------|-------|
+| `scene_load` | `load_empty_scene`, `load_two_op_network` |
+| `event_injection` | `encoder_inject` |
+| `scene_persistence` | `save_scene`, `roundtrip_save_reload` |
+| `network_integrity` | `create_and_connect`, `delete_op_cleans_connections`, `feedback_loop` |
+| `scene_migration` | `save_reload_identical` |
+
+### JSON Output
+
+The test harness can write structured results for CI consumption:
+
+```bash
+./beekeep-test test/fixtures --json-out results.json
+```
+
+Format:
+```json
+{
+  "summary": { "passed": 12, "failed": 0, "total": 12 },
+  "results": [
+    { "group": "scene_load", "test": "load_empty_scene", "msg": "...", "passed": true }
+  ]
+}
+```
+
+### Prerequisites
+
+**macOS:**
+```bash
+brew install jansson pkg-config
+# For bfin_sim:
+brew install jack liblo
+```
+
+**Ubuntu/Debian:**
+```bash
+sudo apt-get install libjansson-dev pkg-config

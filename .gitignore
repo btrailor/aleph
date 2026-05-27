@@ -26,6 +26,8 @@ build-*.sh
 setup-*.sh
 start-*.sh
 test-*.sh
+# Exception: permanent CI test runner scripts
+!scripts/test-sim.sh
 
 # macOS
 .DS_Store
