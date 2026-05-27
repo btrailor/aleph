@@ -166,6 +166,7 @@ src += \
 	$(sim)/src/switches.c \
 	$(sim)/src/timers.c \
 	$(sim)/src/usb.c \
+	$(sim)/src/usb_sim.c \
 	$(sim)/src/usb/midi/midi.c \
 	$(sim)/src/usb/ftdi/ftdi.c \
 	$(sim)/src/usb/hid/hid.c \
@@ -286,7 +287,15 @@ $(build-dir)test/test_network_integrity.o: test/test_network_integrity.c
 	$(Q)test -d $(dir $@) || mkdir -p $(dir $@)
 	gcc $(test-cflags) -Isrc -g -c $< -o $@
 
-test-harness-obj = $(build-dir)test/harness.o $(build-dir)test/test_network_integrity.o
+$(build-dir)test/test_scene_migration.o: test/test_scene_migration.c
+	$(Q)test -d $(dir $@) || mkdir -p $(dir $@)
+	gcc $(test-cflags) -Isrc -g -c $< -o $@
+
+$(build-dir)test/test_usb_sim.o: test/test_usb_sim.c
+	$(Q)test -d $(dir $@) || mkdir -p $(dir $@)
+	gcc $(test-cflags) -Isrc -g -c $< -o $@
+
+test-harness-obj = $(build-dir)test/harness.o $(build-dir)test/test_network_integrity.o $(build-dir)test/test_scene_migration.o $(build-dir)test/test_usb_sim.o
 
 _test_harness: $(test-base-obj) $(test-harness-obj)
 	gcc $(test-base-obj) $(test-harness-obj) \

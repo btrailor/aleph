@@ -226,8 +226,7 @@ static void ni_test_feedback_loop(void) {
     u16 in_b  = net_op_in_idx((u16)op_b, 0);
 
     u16 out_b = net_op_out_idx((u16)op_b, 0);
-    u16 in_a  = net_op_in_idx((u16)op_a, 1 < net_op_num_ins((u16)op_a)
-                                           ? 1 : 0);
+    u16 in_a  = net_op_in_idx((u16)op_a, 1);
 
     printf("  [info] A-out=%u -> B-in=%u\n", out_a, in_b);
     printf("  [info] B-out=%u -> A-in=%u\n", out_b, in_a);

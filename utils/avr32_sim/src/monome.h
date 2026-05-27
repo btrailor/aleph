@@ -175,6 +175,11 @@ extern void monome_grid_led_toggle(u8 x, u8 y);
 // arc led/set function
 extern void monome_arc_led_set(u8 enc, u8 ring, u8 val);
 
+/* Simulation stubs for Phase 2 tests */
+extern void monome_led_all(u8 val);
+extern void monome_led_map(u8 x_off, u8 y_off, const u8 *map);
+extern void monome_led_set(u8 x, u8 y, u8 val);
+
 
 /// TODO: add these row functions,
 /// and abstract some of the stuff in e.g. dsyn/grid.c

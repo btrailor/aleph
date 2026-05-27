@@ -44,19 +44,19 @@ char workingDir[256] = "";
 /* -------------------------------------------------------
  * Runtime flags
  * -------------------------------------------------------*/
-static int s_verbose  = 0;
+int s_verbose  = 0;
 static const char* s_json_out = NULL;
 
 /* -------------------------------------------------------
  * Test infrastructure — counters
  * -------------------------------------------------------*/
-static int s_passed = 0;
-static int s_failed = 0;
-static int s_total  = 0;
+int s_passed = 0;
+int s_failed = 0;
+int s_total  = 0;
 
 /* Current group / test names (for JSON/verbose output) */
-static const char* s_current_group = "";
-static const char* s_current_test  = "";
+const char* s_current_group = "";
+const char* s_current_test  = "";
 
 /* -------------------------------------------------------
  * JSON result accumulation
@@ -71,8 +71,8 @@ typedef struct {
     int  passed;
 } json_result_t;
 
-static json_result_t s_json_results[MAX_JSON_RESULTS];
-static int s_json_count = 0;
+json_result_t s_json_results[MAX_JSON_RESULTS];
+int s_json_count = 0;
 
 static void record_json(int passed, const char* msg) {
     if (s_json_count >= MAX_JSON_RESULTS) return;
@@ -444,6 +444,16 @@ static void test_roundtrip(const char* fixtures_dir) {
 }
 
 /* -------------------------------------------------------
+ * Scene migration tests (from test_scene_migration.c)
+ * -------------------------------------------------------*/
+extern void run_scene_migration_tests(void);
+
+/* -------------------------------------------------------
+ * USB simulation tests (from test_usb_sim.c)
+ * -------------------------------------------------------*/
+extern void run_usb_sim_tests(void);
+
+/* -------------------------------------------------------
  * Network integrity tests (from test_network_integrity.c)
  * -------------------------------------------------------*/
 extern void run_network_integrity_tests(void);
@@ -500,6 +510,12 @@ int main(int argc, char** argv) {
 
     /* ---- Network integrity tests ---- */
     run_network_integrity_tests();
+
+    /* ---- Scene migration tests ---- */
+    run_scene_migration_tests();
+
+    /* ---- USB simulation tests ---- */
+    run_usb_sim_tests();
 
     /* ---- Summary ---- */
     printf("\n════════════════════════════════════════════════\n");

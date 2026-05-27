@@ -1,176 +1,79 @@
-/*
-  ftdi.c
-  aleph-avr32
+/* ftdi.c
+ * aleph / avr32_sim / usb/ftdi
+ *
+ * FTDI USB-serial stub — outbound LED data logger.
+ *
+ * Real behaviour: writes serialosc-protocol bytes to the FTDI FIFO,
+ * which the monome grid reads over USB.
+ *
+ * Sim behaviour: appends bytes to ftdiOutBuffer so test code can verify
+ * that BEES produced the expected LED output without real hardware.
+ *
+ * Wire-up: if monome.c / BEES calls ftdi_write() to flush LED frames,
+ * those bytes land here.  usb_sim_get_led_buffer() then exposes them
+ * to the test layer.  For tests that work directly at the monome_led_*
+ * level, monome_led_flush() / usb_sim_get_led_buffer() is the simpler
+ * path — use whichever is appropriate.
+ */
 
-  FTDI usb functions.
-*/
+#include <string.h>
+#include <stdio.h>
 
-// asf
-#include "delay.h"
-#include "print_funcs.h"
-// aleph
-//#include "conf_usb_host.h"
-#include "events.h"
-#include "event_types.h"
 #include "ftdi.h"
-#include "global.h"
-#include "monome.h"
-//#include "uhi_ftdi.h"
 
-//---- defines
+/* -------------------------------------------------------------------------
+ * Capture buffer
+ * --------------------------------------------------------------------------*/
+u8  ftdiOutBuffer[FTDI_OUT_BUF_SIZE];
+u16 ftdiOutBufferLen = 0;
 
+/* -------------------------------------------------------------------------
+ * ftdi_write
+ * --------------------------------------------------------------------------*/
+int ftdi_write(const u8 *buf, u16 len) {
+    u16 i;
+    int accepted = 0;
 
+    if (buf == NULL || len == 0) { return 0; }
 
-//---- extern vars
-u8 ftdiConnect = 0;
+    for (i = 0; i < len; i++) {
+        if (ftdiOutBufferLen >= FTDI_OUT_BUF_SIZE) {
+            /* Buffer full — log a warning and stop accepting. */
+            fprintf(stderr,
+                    "[ftdi] output buffer full (%u bytes), dropping %u bytes\n",
+                    (unsigned)FTDI_OUT_BUF_SIZE,
+                    (unsigned)(len - i));
+            break;
+        }
+        ftdiOutBuffer[ftdiOutBufferLen++] = buf[i];
+        accepted++;
+    }
 
-//----- static vars
-static u8 rxBuf[FTDI_RX_BUF_SIZE];
-static u32 rxBytes = 0;
-static u8 rxBusy = 0;
-static u8 txBusy = 0;
-//static uhd_trans_status_t status = 0;
-
-#if 0
-static event_t e;
-#endif
-
-//------- static functions
-
-/* static void ftdi_rx_done(  usb_add_t add, */
-/* 			   usb_ep_t ep, */
-/* 			   uhd_trans_status_t stat, */
-/* 			   iram_size_t nb) { */
-/* #if 1 */
-/* #else */
-/*   status = stat; */
-/*   rxBusy = 0; */
-/*   rxBytes = nb - FTDI_STATUS_BYTES; */
-/*   /\* print_dbg("\r\n ftdi rx transfer callback. status: 0x"); *\/ */
-/*   /\* print_dbg_hex((u32)status); *\/ */
-/*   /\* print_dbg(" ; bytes transferred: "); *\/ */
-/*   /\* print_dbg_ulong(nb); *\/ */
-/*   /\* print_dbg(" ; status bytes: 0x"); *\/ */
-/*   /\* print_dbg_hex(rxBuf[0]); *\/ */
-/*   /\* print_dbg(" 0x"); *\/ */
-/*   /\* print_dbg_hex(rxBuf[1]); *\/			     */
-/*   if(rxBytes) { */
-/*     // check for monome events */
-/*     //    if(monome_read_serial != NULL) {  */
-/*       (*monome_read_serial)();  */
-/*       //} */
-/*     ///... TODO: other protocols */
-/*   }  */
-/* #endif */
-/* } */
-
-/* static void ftdi_tx_done( */
-/* 			       usb_add_t add, */
-/* 			       usb_ep_t ep, */
-/* 			       uhd_trans_status_t stat, */
-/* 			       iram_size_t nb) { */
-/* #if 1 */
-/* #else */
-/*   status = stat; */
-/*   txBusy = 0; */
-/*   /\* print_dbg("\r\n ftdi tx transfer callback. status: 0x"); *\/ */
-/*   /\* print_dbg_hex((u32)status); *\/ */
-/*   if (status != UHD_TRANS_NOERROR) { */
-/*     print_dbg("\r\n ftdi tx error"); */
-/*     return; */
-/*   } */
-  
-/* #endif */
-/* } */
-
-//-------- extern functions
-void ftdi_write(u8* data, u32 bytes) {
-#if 1
-#else
-  txBusy = 1;
-  if(!uhi_ftdi_out_run(data, bytes, &ftdi_tx_done)) {
-
-    print_dbg("\r\n error requesting ftdi output pipe");
-  }
-#endif
-}
-    
-void ftdi_read(void) {
-#if 1
-#else
-  rxBytes = 0;
-  rxBusy = true;
-  if (!uhi_ftdi_in_run((u8*)rxBuf,
-		       FTDI_RX_BUF_SIZE, &ftdi_rx_done)) {
-    print_dbg("\r\n ftdi rx transfer error");
-  }
-  return;
-#endif
+    return accepted;
 }
 
-
-// respond to connection or disconnection of ftdi device.
-// may be called from an interrupt
-/* void ftdi_change(uhc_device_t* dev, u8 plug) { */
-/* #if 1 */
-/* #else */
-/*   print_dbg("\r\n changed FTDI connection status"); */
-/*   if(plug) {  */
-/*     e.type = kEventFtdiConnect;  */
-/*   } else { */
-/*     e.type = kEventFtdiDisconnect; */
-/*   } */
-/*   // posting an event so the main loop can respond */
-/*   event_post(&e);  */
-/* #endif */
-/* } */
-
-// setup new device connection
-void ftdi_setup(void) {
-#if 1
-#else
-  char * manstr;
-  char * prodstr;
-  char * serstr;
-  //  u8 matchMonome;
-  print_dbg("\r\n FTDI setup routine");
-
-  // get string data...
-  ftdi_get_strings(&manstr, &prodstr, &serstr);  
-  // print the strings
-  // print_unicode_string(manstr, FTDI_STRING_MAX_LEN);
-  //  print_unicode_string(prodstr, FTDI_STRING_MAX_LEN);
-  //  print_unicode_string(serstr, FTDI_STRING_MAX_LEN);
-  //// query if this is a monome device
-  check_monome_device_desc(manstr, prodstr, serstr);
-  //// TODO: other protocols??
-
-  // set connection flag
-  ftdiConnect = 1;
-#endif
+/* -------------------------------------------------------------------------
+ * ftdi_out_buf_clear
+ * --------------------------------------------------------------------------*/
+void ftdi_out_buf_clear(void) {
+    memset(ftdiOutBuffer, 0, sizeof(ftdiOutBuffer));
+    ftdiOutBufferLen = 0;
 }
 
+/* -------------------------------------------------------------------------
+ * Stubs for functions declared in ftdi.h but not implemented
+ * --------------------------------------------------------------------------*/
 
-// rx buffer (no status bytes)
-extern u8* ftdi_rx_buf() {
-  return rxBuf + 2;
-}
+void ftdi_read(void) { }
 
-// number of bytes from last rx trasnfer
-extern volatile u8 ftdi_rx_bytes() {
-  return rxBytes;
-}
+u8* ftdi_rx_buf(void) { return NULL; }
 
-// busy flags
-extern volatile u8 ftdi_rx_busy() {
-  return rxBusy;
-}
+volatile u8 ftdi_rx_bytes(void) { return 0; }
 
-extern volatile u8 ftdi_tx_busy() {
-  return txBusy;
-}
+volatile u8 ftdi_rx_busy(void) { return 0; }
 
-// device plugged flag
-extern u8 ftdi_connected(void) {
-  return ftdiConnect;
-}
+volatile u8 ftdi_tx_busy(void) { return 0; }
+
+u8 ftdi_connected(void) { return 0; }
+
+void ftdi_setup(void) { }

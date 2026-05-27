@@ -14,6 +14,7 @@ extern "C" {
 //#include "uhc.h"
 
 #define FTDI_RX_BUF_SIZE 64
+#define FTDI_OUT_BUF_SIZE 4096
 //#define FTDI_TX_BUF_SIZE 64
 
 // ftdi sends 2 status bytes at top of each packet.
@@ -33,7 +34,7 @@ extern "C" {
 extern void ftdi_read(void);
 
 // write to FTDI device
-extern void ftdi_write(u8* data, u32 bytes);
+extern int ftdi_write(const u8* data, u16 bytes);
 
 // FTDI device was plugged or unplugged
 //extern void ftdi_change(uhc_device_t* dev, u8 plug);
@@ -51,6 +52,12 @@ extern volatile u8 ftdi_rx_busy(void);
 extern volatile u8 ftdi_tx_busy(void);
 // device connected flag
 extern u8 ftdi_connected(void);
+
+/* ---- Simulation additions for Phase 2 ---- */
+extern u8  ftdiOutBuffer[FTDI_OUT_BUF_SIZE];
+extern u16 ftdiOutBufferLen;
+extern void ftdi_out_buf_clear(void);
+
 #ifdef __cplusplus
 }
 #endif

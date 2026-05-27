@@ -955,3 +955,32 @@ encode:   byte 0 = ((id) << 4) | b = 160 + b
 static void set_intense_mext(u8 v) {
   // TODO
 }
+
+/* -------------------------------------------------------------------------
+ * Simulation stubs for Phase 2 tests
+ * --------------------------------------------------------------------------*/
+
+void monome_led_all(u8 val) {
+    extern void usb_sim_capture_led(u8 x, u8 y, u8 val);
+    int i;
+    for (i = 0; i < 256; i++) {
+        usb_sim_capture_led(i % 16, i / 16, val);
+    }
+}
+
+void monome_led_map(u8 x_off, u8 y_off, const u8 *map) {
+    extern void usb_sim_capture_led(u8 x, u8 y, u8 val);
+    int x, y;
+    for (y = 0; y < 8; y++) {
+        u8 row = map[y];
+        for (x = 0; x < 8; x++) {
+            u8 val = (row & (1 << (7 - x))) ? 15 : 0;
+            usb_sim_capture_led(x_off + x, y_off + y, val);
+        }
+    }
+}
+
+void monome_led_set(u8 x, u8 y, u8 val) {
+    extern void usb_sim_capture_led(u8 x, u8 y, u8 val);
+    usb_sim_capture_led(x, y, val);
+}

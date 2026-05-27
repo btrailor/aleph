@@ -20,4 +20,17 @@ extern void midi_write(u8* data, u32 bytes);
 // and whose completion is necessary before polling.
 // extern void midi_setup(void);
 
+/* ---- Simulation additions for Phase 2 ---- */
+#define MIDI_OUT_PACKET_MAX 256
+
+typedef struct {
+    u8 b[4];
+} midi_packet_t;
+
+extern midi_packet_t midiOutPackets[MIDI_OUT_PACKET_MAX];
+extern u16 midiOutPacketCount;
+
+extern void uhi_midi_write(u8 b0, u8 b1, u8 b2, u8 b3);
+extern void midi_out_buf_clear(void);
+
 #endif

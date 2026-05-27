@@ -83,3 +83,15 @@ u8 event_post( event_t *e ) {
 
   return status;
 }
+
+/* -------------------------------------------------------------------------
+ * Simulation stub for Phase 2 tests
+ * --------------------------------------------------------------------------*/
+
+int event_queue_count(void) {
+    if (putIdx >= getIdx) {
+        return putIdx - getIdx;
+    } else {
+        return MAX_EVENTS - (getIdx - putIdx);
+    }
+}

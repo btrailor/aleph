@@ -31,6 +31,9 @@ u8 event_next( event_t *e );
 // return 1 if success
 u8 event_post( event_t *e );
 
+/* Simulation stub for Phase 2 tests */
+int event_queue_count(void);
+
 #ifdef __cplusplus
 }
 #endif

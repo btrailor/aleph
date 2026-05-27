@@ -20,9 +20,39 @@
 
 #include "types.h"
 
-//==============================================================================
-// Scene Conversion API
-//==============================================================================
+/* -------------------------------------------------------------------------
+ * Scene data structures (for simulator tests)
+ * --------------------------------------------------------------------------*/
+
+#define SCENE_MAX_OPS   64
+#define SCENE_MAX_NETS  256
+
+#define SCENE_VERSION_071  0x0701
+#define SCENE_VERSION_08X  0x0800
+
+typedef struct {
+    s16 type_id;
+    s32 params[8];
+} scene_op_t;
+
+typedef struct {
+    s16 src_op;
+    s16 src_output;
+    s16 dst_op;
+    s16 dst_input;
+} scene_net_t;
+
+typedef struct {
+    u16        version;
+    u16        num_ops;
+    u16        num_nets;
+    scene_op_t  ops[SCENE_MAX_OPS];
+    scene_net_t nets[SCENE_MAX_NETS];
+} scene_data_t;
+
+/* -------------------------------------------------------------------------
+ * Scene Conversion API
+ * --------------------------------------------------------------------------*/
 
 /**
  * Convert 0.7.1 scene pickle data to 0.8.x format
@@ -54,7 +84,7 @@ extern u8 scene_convert_v07_to_v08(u8* pickle, u32 pickleSize);
  * 
  * @return 1 if 0.7.1 format detected, 0 otherwise
  */
-extern u8 scene_is_v07_format(const u8* pickle);
+extern u8 scene_is_v07_format(const u8* pickle, u32 pickleSize);
 
 /**
  * Validate converted scene data
@@ -68,7 +98,12 @@ extern u8 scene_is_v07_format(const u8* pickle);
  * 
  * @return 1 if valid, 0 if corruption detected
  */
-extern u8 scene_validate_converted(const u8* pickle);
+extern u8 scene_validate_converted(const u8* pickle, u32 pickleSize);
+
+/* Direct scene conversion (for tests with structured data) */
+extern int scene_convert(scene_data_t *scene);
+extern int scene_convert_op_id(int old_id);
+extern int scene_convert_output_idx(int op_new_id, int old_output);
 
 //==============================================================================
 // Conversion Statistics (for debugging)
