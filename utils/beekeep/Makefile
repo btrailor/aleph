@@ -158,6 +158,7 @@ src += \
 	$(sim)/src/interrupts.c \
 	$(sim)/src/memory.c \
 	$(sim)/src/monome.c\
+	$(sim)/src/monome_transport_sim.c \
 	$(sim)/src/print_funcs.c \
 	$(sim)/src/region.c \
 	$(sim)/src/screen.c \
@@ -169,6 +170,7 @@ src += \
 	$(sim)/src/usb_sim.c \
 	$(sim)/src/usb/midi/midi.c \
 	$(sim)/src/usb/ftdi/ftdi.c \
+	$(sim)/src/usb/cdc/cdc_sim.c \
 	$(sim)/src/usb/hid/hid.c \
 	$(sim)/src/fonts/ume_tgo5_18.c \
 	$(sim)/src/fix.c \

@@ -30,24 +30,46 @@ extern "C" {
 #include "types.h"
 
 /* ==========================================================================
- * Monome / grid lifecycle
+ * Monome / grid lifecycle (with transport distinction)
  * ========================================================================== */
 
 /*
- * usb_sim_monome_connect — post kEventMonomeConnect.
- *
- * device : eMonomeDevice value.  1 = 64-pad grid, 5 = arc.
- * cols   : number of grid columns (e.g. 16)
- * rows   : number of grid rows   (e.g. 8)
- *
- * Encodes [device, cols, rows, 0] into event.data, matching the layout
- * that monome_connect_parse_event_data() in BEES expects.
+ * Transport type for connected monome device.
+ * Tracks whether the emulator is using FTDI or CDC transport.
+ */
+typedef enum {
+  eUsbSimTransportNone = 0,
+  eUsbSimTransportFTDI,
+  eUsbSimTransportCDC
+} eUsbSimTransport;
+
+/*
+ * usb_sim_monome_connect_ftdi — connect a legacy FTDI-based grid.
+ * Posts kEventMonomeConnect and sets transport to FTDI.
+ */
+void usb_sim_monome_connect_ftdi(u8 device, u8 cols, u8 rows);
+
+/*
+ * usb_sim_monome_connect_cdc — connect a modern CDC-based grid.
+ * Posts kEventMonomeConnect and sets transport to CDC.
+ */
+void usb_sim_monome_connect_cdc(u8 device, u8 cols, u8 rows);
+
+/*
+ * usb_sim_monome_connect — legacy alias, defaults to FTDI for backward compat.
+ * DEPRECATED: use usb_sim_monome_connect_ftdi() or usb_sim_monome_connect_cdc().
  */
 void usb_sim_monome_connect(u8 device, u8 cols, u8 rows);
 
 /*
+ * usb_sim_get_transport — return the current transport type.
+ * Returns eUsbSimTransportNone if no device is connected.
+ */
+eUsbSimTransport usb_sim_get_transport(void);
+
+/*
  * usb_sim_monome_disconnect — post kEventMonomeDisconnect.
- * data = 0.
+ * data = 0. Resets transport to None.
  */
 void usb_sim_monome_disconnect(void);
 

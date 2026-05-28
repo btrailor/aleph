@@ -17,7 +17,9 @@
 #include "event_inject.h"
 #include "events.h"
 #include "types.h"
+#include "monome_transport_sim.h"
 #include "usb/ftdi/ftdi.h"
+#include "usb/cdc/cdc_sim.h"
 #include "usb/midi/midi.h"
 
 /* -------------------------------------------------------------------------
@@ -40,18 +42,37 @@ extern midi_packet_t midiOutPackets[MIDI_OUT_PACKET_MAX];
 extern u16 midiOutPacketCount;
 
 /* -------------------------------------------------------------------------
- * Monome lifecycle
+ * Transport tracking
  * --------------------------------------------------------------------------*/
 
-void usb_sim_monome_connect(u8 device, u8 cols, u8 rows) {
+static eUsbSimTransport usbSimTransport = eUsbSimTransportNone;
+
+/* -------------------------------------------------------------------------
+ * Monome lifecycle (with transport distinction)
+ * --------------------------------------------------------------------------*/
+
+static void usb_sim_monome_connect_internal(u8 device, u8 cols, u8 rows, eUsbSimTransport transport) {
     event_t e;
     e.type = kEventMonomeConnect;
     /* Pack as four bytes little-endian: [device][cols][rows][0] */
     e.data = (s32)( (u32)device
                   | ((u32)cols  << 8)
                   | ((u32)rows  << 16) );
-    fprintf(stderr, "[usb_sim] monome_connect device=%u cols=%u rows=%u\n",
-            (unsigned)device, (unsigned)cols, (unsigned)rows);
+    
+    usbSimTransport = transport;
+    
+    if (transport == eUsbSimTransportFTDI) {
+        fprintf(stderr, "[usb_sim] monome_connect (FTDI) device=%u cols=%u rows=%u\n",
+                (unsigned)device, (unsigned)cols, (unsigned)rows);
+        monome_transport_setup_ftdi();
+    } else if (transport == eUsbSimTransportCDC) {
+        fprintf(stderr, "[usb_sim] monome_connect (CDC) device=%u cols=%u rows=%u\n",
+                (unsigned)device, (unsigned)cols, (unsigned)rows);
+        monome_transport_setup_cdc();
+    } else {
+        fprintf(stderr, "[usb_sim] monome_connect (unknown transport) device=%u cols=%u rows=%u\n",
+                (unsigned)device, (unsigned)cols, (unsigned)rows);
+    }
     
     /* Store dimensions for LED buffer inspection */
     usbSimLedCols = cols;
@@ -65,11 +86,35 @@ void usb_sim_monome_connect(u8 device, u8 cols, u8 rows) {
     event_post(&e);
 }
 
+void usb_sim_monome_connect_ftdi(u8 device, u8 cols, u8 rows) {
+    usb_sim_monome_connect_internal(device, cols, rows, eUsbSimTransportFTDI);
+}
+
+void usb_sim_monome_connect_cdc(u8 device, u8 cols, u8 rows) {
+    usb_sim_monome_connect_internal(device, cols, rows, eUsbSimTransportCDC);
+}
+
+void usb_sim_monome_connect(u8 device, u8 cols, u8 rows) {
+    /* Legacy alias: default to FTDI for backward compatibility */
+    usb_sim_monome_connect_ftdi(device, cols, rows);
+}
+
+eUsbSimTransport usb_sim_get_transport(void) {
+    return usbSimTransport;
+}
+
 void usb_sim_monome_disconnect(void) {
     event_t e;
     e.type = kEventMonomeDisconnect;
     e.data = 0;
-    fprintf(stderr, "[usb_sim] monome_disconnect\n");
+    fprintf(stderr, "[usb_sim] monome_disconnect (was %s)\n",
+            usbSimTransport == eUsbSimTransportFTDI ? "FTDI" :
+            usbSimTransport == eUsbSimTransportCDC ? "CDC" : "None");
+    
+    if (monome_transport_get() != eTransportNone) {
+        monome_transport_disconnect();
+    }
+    usbSimTransport = eUsbSimTransportNone;
     event_post(&e);
 }
 
@@ -195,6 +240,9 @@ void usb_sim_reset(void) {
     midiOutPacketCount = 0;
     ftdiOutBufferLen = 0;
     memset(ftdiOutBuffer, 0, FTDI_OUT_BUF_SIZE);
+    cdc_out_buf_clear();
+    monome_transport_init();
+    usbSimTransport = eUsbSimTransportNone;
     init_events();  /* clear event queue */
     fprintf(stderr, "[usb_sim] reset complete\n");
 }

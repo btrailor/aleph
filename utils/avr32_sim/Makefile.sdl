@@ -48,6 +48,7 @@ SIM_OBJS = \
   $(SIM)/src/interrupts.o \
   $(SIM)/src/memory.o \
   $(SIM)/src/monome.o \
+  $(SIM)/src/monome_transport_sim.o \
   $(SIM)/src/print_funcs.o \
   $(SIM)/src/region.o \
   $(SIM)/src/screen.o \
@@ -62,6 +63,7 @@ SIM_OBJS = \
   $(SIM)/src/fonts/ume_tgo5_18.o \
   $(SIM)/src/usb/midi/midi.o \
   $(SIM)/src/usb/ftdi/ftdi.o \
+  $(SIM)/src/usb/cdc/cdc_sim.o \
   $(SIM)/src/usb/hid/hid.o
 
 # SDL-specific objects

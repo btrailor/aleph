@@ -38,7 +38,9 @@
 #include "events.h"
 #include "event_types.h"
 #include "monome.h"
+#include "monome_transport_sim.h"
 #include "usb/ftdi/ftdi.h"
+#include "usb/cdc/cdc_sim.h"
 #include "usb/midi/midi.h"
 #include "types.h"
 
@@ -331,6 +333,84 @@ static void test_reset_clears_all(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * U21  CDC transport distinct from FTDI
+ * --------------------------------------------------------------------------*/
+static void test_cdc_transport_distinct(void) {
+    usb_sim_reset();
+    
+    /* Connect a CDC grid */
+    usb_sim_monome_connect_cdc(1, 16, 8);
+    ASSERT_EQ((int)usb_sim_get_transport(), (int)eUsbSimTransportCDC,
+              "U21a: CDC connect sets transport to CDC");
+    ASSERT_EQ((int)monome_transport_get(), (int)eTransportCDC,
+              "U21b: monome_transport reflects CDC");
+    
+    /* Write should go to CDC buffer, not FTDI */
+    u8 frame[] = { 0x1A, 0x00, 0x00, 0xFF };
+    monome_transport_write(frame, 4);
+    ASSERT_EQ((int)cdcOutBufferLen, 4, "U21c: CDC write captured in cdcOutBuffer");
+    ASSERT_EQ((int)ftdiOutBufferLen, 0, "U21d: FTDI buffer untouched by CDC write");
+    
+    usb_sim_monome_disconnect();
+    ASSERT_EQ((int)usb_sim_get_transport(), (int)eUsbSimTransportNone,
+              "U21e: disconnect resets transport to None");
+}
+
+/* -------------------------------------------------------------------------
+ * U22  FTDI transport still works after CDC addition
+ * --------------------------------------------------------------------------*/
+static void test_ftdi_transport_still_works(void) {
+    usb_sim_reset();
+    
+    /* Connect an FTDI grid */
+    usb_sim_monome_connect_ftdi(1, 16, 8);
+    ASSERT_EQ((int)usb_sim_get_transport(), (int)eUsbSimTransportFTDI,
+              "U22a: FTDI connect sets transport to FTDI");
+    ASSERT_EQ((int)monome_transport_get(), (int)eTransportFTDI,
+              "U22b: monome_transport reflects FTDI");
+    
+    /* Write should go to FTDI buffer, not CDC */
+    u8 frame[] = { 0x1A, 0x00, 0x00, 0xFF };
+    monome_transport_write(frame, 4);
+    ASSERT_EQ((int)ftdiOutBufferLen, 4, "U22c: FTDI write captured in ftdiOutBuffer");
+    ASSERT_EQ((int)cdcOutBufferLen, 0, "U22d: CDC buffer untouched by FTDI write");
+    
+    usb_sim_monome_disconnect();
+}
+
+/* -------------------------------------------------------------------------
+ * U23  Legacy usb_sim_monome_connect defaults to FTDI
+ * --------------------------------------------------------------------------*/
+static void test_legacy_connect_defaults_ftdi(void) {
+    usb_sim_reset();
+    
+    /* Legacy API should default to FTDI for backward compatibility */
+    usb_sim_monome_connect(1, 16, 8);
+    ASSERT_EQ((int)usb_sim_get_transport(), (int)eUsbSimTransportFTDI,
+              "U23: legacy usb_sim_monome_connect defaults to FTDI");
+    
+    usb_sim_monome_disconnect();
+}
+
+/* -------------------------------------------------------------------------
+ * U24  usb_sim_reset clears both FTDI and CDC buffers
+ * --------------------------------------------------------------------------*/
+static void test_reset_clears_both_buffers(void) {
+    u8 frame[] = { 0xDE, 0xAD };
+    
+    /* Fill FTDI buffer */
+    ftdi_write(frame, 2);
+    /* Fill CDC buffer */
+    cdc_write(frame, 2);
+    
+    usb_sim_reset();
+    ASSERT_EQ((int)ftdiOutBufferLen, 0, "U24a: FTDI buffer cleared");
+    ASSERT_EQ((int)cdcOutBufferLen, 0, "U24b: CDC buffer cleared");
+    ASSERT_EQ((int)usb_sim_get_transport(), (int)eUsbSimTransportNone,
+              "U24c: transport reset to None");
+}
+
+/* -------------------------------------------------------------------------
  * Main
  * --------------------------------------------------------------------------*/
 int run_usb_sim_tests(void) {
@@ -356,6 +436,10 @@ int run_usb_sim_tests(void) {
     test_ftdi_capture();
     test_ftdi_clear();
     test_reset_clears_all();
+    test_cdc_transport_distinct();
+    test_ftdi_transport_still_works();
+    test_legacy_connect_defaults_ftdi();
+    test_reset_clears_both_buffers();
 
     printf("\n# Ran %d assertions, %d failed\n", _test_count, _fail_count);
     if (_fail_count == 0) {
