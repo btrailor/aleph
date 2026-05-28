@@ -34,13 +34,13 @@ $(LIB_AVR32)src/midi_common.c \
 $(LIB_AVR32)src/usb.c \
 $(LIB_AVR32)src/usb/ftdi/uhi_ftdi.c \
 $(LIB_AVR32)src/usb/ftdi/ftdi.c \
-$(LIB_AVR32)src/usb/cdc/uhi_cdc.c \
+$(LIB_AVR32)asf/common/services/usb/class/cdc/host/uhi_cdc.c \
 $(LIB_AVR32)src/usb/cdc/cdc.c \
 $(LIB_AVR32)src/usb/hid/hid.c \
 $(LIB_AVR32)src/usb/hid/uhi_hid.c \
 $(LIB_AVR32)src/usb/midi/uhi_midi.c \
 $(LIB_AVR32)src/usb/midi/midi.c \
-$(LIB_AVR32)src/monome_transport.c \
+$(LIB_AVR32)src/adc.c \
 $(LIB_AVR32)src/fix.c \
 $(LIB_AVR32)src/libfixmath/fix16.c
 
@@ -83,7 +83,7 @@ $(LIB_AVR32)src/usb/ftdi   \
 $(LIB_AVR32)src/usb/cdc   \
 $(LIB_AVR32)src/usb/hid \
 $(LIB_AVR32)src/usb/midi   \
-$(LIB_AVR32)src/usb/cdc \
+$(LIB_AVR32)asf/common/services/usb/class/cdc/host   \
 $(LIB_AVR32)src/libfixmath
 
 # aleph_specific avr32 sources

@@ -181,8 +181,8 @@ static inline void assign_main_event_handlers(void) {
     app_event_handlers[kEventSwitch7] = &dummy_handler;
     app_event_handlers[kEventFtdiConnect] = &handler_FtdiConnect;
     app_event_handlers[kEventFtdiDisconnect] = &handler_FtdiDisconnect;
-    app_event_handlers[kEventCdcConnect] = &handler_CdcConnect;
-    app_event_handlers[kEventCdcDisconnect] = &handler_CdcDisconnect;
+    app_event_handlers[kEventSerialConnect] = &handler_CdcConnect;
+    app_event_handlers[kEventSerialDisconnect] = &handler_CdcDisconnect;
     app_event_handlers[kEventMonomeConnect] = &handler_MonomeConnect;
     app_event_handlers[kEventMonomeDisconnect] = &dummy_handler;
     app_event_handlers[kEventMonomePoll] = &handler_MonomePoll;
@@ -336,7 +336,7 @@ void check_startup(void) {
 	      event_post(&e1);
 	    }
 	    if(cdcConnect) {
-	      e1.type = kEventCdcConnect;
+	      e1.type = kEventSerialConnect;
 	      event_post(&e1);
 	    }
 	    if (monomeConnectMain) {
