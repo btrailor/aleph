@@ -1,4 +1,4 @@
 [submodule "libavr32"]
 	path = libavr32
-	url = https://github.com/monome/libavr32.git
+	url = git@github.com:btrailor/libavr32.git
 	branch = aleph-cdc-compat
