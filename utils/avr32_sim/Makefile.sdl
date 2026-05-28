@@ -1,0 +1,95 @@
+# Makefile.sdl — SDL2 visual simulator for Aleph
+# Phase 3: links against beekeep HEADLESS=1 build objects
+#
+# Usage:
+#   cd ../beekeep && make HEADLESS=1        # build base objects
+#   cd ../avr32_sim && make -f Makefile.sdl  # build SDL binary
+
+SIM     = ../avr32_sim
+BEES    = ../../apps/bees
+BEEKEEP = ../beekeep
+
+CC      = gcc
+CFLAGS  = -std=gnu99 -g -O0 -Wall \
+          -I$(BEES) -I$(BEES)/src -I$(BEES)/../../common \
+          -I$(SIM) -I$(SIM)/src \
+          -I$(SIM)/src/usb -I$(SIM)/src/usb/midi -I$(SIM)/src/usb/ftdi -I$(SIM)/src/usb/hid -I$(SIM)/src/usb/mouse -I$(SIM)/src/usb/hub \
+          -I../../avr32/src \
+          -D BEEKEEP=1 -D ARCH_AVR32=1 -D DYNAMIC_NETWORK_ENABLED=1
+
+SDL_CFLAGS := $(shell sdl2-config --cflags 2>/dev/null)
+SDL_LFLAGS := $(shell sdl2-config --libs 2>/dev/null)
+JANSSON_LFLAGS := $(shell pkg-config --libs jansson 2>/dev/null)
+
+ifeq ($(SDL_CFLAGS),)
+  $(error "SDL2 not found. Install with: brew install sdl2")
+endif
+
+# Gather all objects from beekeep HEADLESS build (excluding main_headless.o)
+BEES_OBJS    = $(shell find $(BEES)/src -name '*.o' 2>/dev/null)
+BEEKEEP_OBJS = $(shell find $(BEEKEEP)/src -name '*.o' ! -name 'main_headless.o' 2>/dev/null)
+
+# Simulator objects (exactly what beekeep Makefile builds, minus main_headless)
+SIM_OBJS = \
+  $(SIM)/src/adc.o \
+  $(SIM)/src/app.o \
+  $(SIM)/src/bfin.o \
+  $(SIM)/src/bfin_mock.o \
+  $(SIM)/src/control.o \
+  $(SIM)/src/delay.o \
+  $(SIM)/src/encoders.o \
+  $(SIM)/src/event_inject.o \
+  $(SIM)/src/events.o \
+  $(SIM)/src/filesystem.o \
+  $(SIM)/src/flash.o \
+  $(SIM)/src/font.o \
+  $(SIM)/src/i2c.o \
+  $(SIM)/src/init.o \
+  $(SIM)/src/interrupts.o \
+  $(SIM)/src/memory.o \
+  $(SIM)/src/monome.o \
+  $(SIM)/src/print_funcs.o \
+  $(SIM)/src/region.o \
+  $(SIM)/src/screen.o \
+  $(SIM)/src/serial.o \
+  $(SIM)/src/simple_string.o \
+  $(SIM)/src/switches.o \
+  $(SIM)/src/timers.o \
+  $(SIM)/src/usb.o \
+  $(SIM)/src/usb_sim.o \
+  $(SIM)/src/fix.o \
+  $(SIM)/src/libfixmath/fix16.o \
+  $(SIM)/src/fonts/ume_tgo5_18.o \
+  $(SIM)/src/usb/midi/midi.o \
+  $(SIM)/src/usb/ftdi/ftdi.o \
+  $(SIM)/src/usb/hid/hid.o
+
+# SDL-specific objects
+SDL_SRCS = $(SIM)/src/sdl_screen.c $(SIM)/src/sdl_events.c $(SIM)/src/inspector.c $(SIM)/src/main_sdl.c
+SDL_OBJS = $(patsubst %.c,%.o,$(SDL_SRCS))
+
+TARGET = aleph-sdl
+
+.PHONY: all clean
+
+all: $(TARGET)
+
+$(TARGET): $(SDL_OBJS)
+	$(CC) $(BEES_OBJS) $(BEEKEEP_OBJS) $(SIM_OBJS) $(SDL_OBJS) \
+		-o $@ $(CFLAGS) $(SDL_CFLAGS) $(JANSSON_LFLAGS) $(SDL_LFLAGS)
+	@echo "[sdl] Built $@"
+
+$(SIM)/src/sdl_%.o: $(SIM)/src/sdl_%.c
+	$(CC) $(CFLAGS) $(SDL_CFLAGS) -c $< -o $@
+
+$(SIM)/src/inspector.o: $(SIM)/src/inspector.c
+	$(CC) $(CFLAGS) $(SDL_CFLAGS) -c $< -o $@
+
+$(SIM)/src/main_sdl.o: $(SIM)/src/main_sdl.c
+	$(CC) $(CFLAGS) $(SDL_CFLAGS) -c $< -o $@
+
+clean:
+	rm -f $(TARGET) $(SDL_OBJS)
+
+run: $(TARGET)
+	./$(TARGET)
