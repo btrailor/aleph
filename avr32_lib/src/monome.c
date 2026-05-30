@@ -4,7 +4,30 @@
 
 #include "events.h"
 #include "ftdi.h"
+#include "cdc.h"
 #include "monome.h"
+
+//--- transport abstraction for CDC/FTDI dual support
+static u8 use_cdc = 0;
+
+static inline void monome_transport_write(u8* data, u8 bytes) {
+  if(use_cdc) { cdc_write(data, bytes); } else { ftdi_write(data, bytes); }
+}
+static inline void monome_transport_read(void) {
+  if(use_cdc) { cdc_read(); } else { ftdi_read(); }
+}
+static inline u8 monome_transport_tx_busy(void) {
+  return use_cdc ? cdc_tx_busy() : ftdi_tx_busy();
+}
+static inline u8 monome_transport_rx_busy(void) {
+  return use_cdc ? cdc_rx_busy() : ftdi_rx_busy();
+}
+static inline u8 monome_transport_rx_bytes(void) {
+  return use_cdc ? cdc_rx_bytes() : ftdi_rx_bytes();
+}
+static inline u8* monome_transport_rx_buf(void) {
+  return use_cdc ? cdc_rx_buf() : ftdi_rx_buf();
+}
 
 
 //------ defines
@@ -126,6 +149,7 @@ static void grid_map_mext(u8 x, u8 y, const u8* data);
 //static void ring_set_mext(u8 n, u8 rho, u8 val);
 static void ring_map_mext(u8 n, u8* data);
 
+static inline void set_funcs(void);
 static inline void monome_grid_key_write_event( u8 x, u8 y, u8 val);
 static inline void monome_grid_adc_write_event( u8 n, u16 val);
 static inline void monome_ring_enc_write_event( u8 n, u8 val);
@@ -203,10 +227,12 @@ u8 check_monome_device_desc(char* mstr, char* pstr, char* sstr) {
   u8 matchMan = 0;
   u8 i;
   u8 ret;
-  //-- source strings are unicode so we need to look at every other byte
+  //-- source strings may be unicode (FTDI) or ASCII (CDC)
+  //-- detect by checking for null byte at index 1 (ASCII has printable char)
+  u8 isUnicode = (mstr[1] == 0);
   // manufacturer
   for(i=0; i<MONOME_MANSTR_LEN; i++) {
-    buf[i] = mstr[i*2];
+    buf[i] = isUnicode ? mstr[i*2] : mstr[i];
   }
   buf[i] = 0;
   matchMan = ( strncmp(buf, "monome", MONOME_MANSTR_LEN) == 0 );
@@ -215,7 +241,7 @@ u8 check_monome_device_desc(char* mstr, char* pstr, char* sstr) {
  
   // serial number string
   for(i=0; i<MONOME_SERSTR_LEN; i++) {
-    buf[i] = sstr[i*2];
+    buf[i] = isUnicode ? sstr[i*2] : sstr[i];
   }
   buf[i] = 0;
   /* print_dbg("\r\n serial string: "); */
@@ -260,6 +286,19 @@ u8 check_monome_device_desc(char* mstr, char* pstr, char* sstr) {
       return 1;
     }
     // if we got here, serial number didn't match series or 40h patterns.
+    // for CDC devices with "cdc" serial prefix, assume modern grid
+    if( strncmp(buf, "cdc", 3) == 0 ) {
+      // modern CDC grid - assume 128 (16x8) with mext protocol
+      mdesc.protocol = eProtocolMext;
+      mdesc.device = eDeviceGrid;
+      mdesc.cols = 16;
+      mdesc.rows = 8;
+      mdesc.vari = 1;
+      mdesc.tilt = 1;
+      use_cdc = 1;
+      set_funcs();
+      return 1;
+    }
     // so this is probably an extended-protocol device.
     // we need to query for device attributes
     return setup_mext();
@@ -367,6 +406,7 @@ void monome_connect_parse_event_data(u32 data, eMonomeDevice *dev, u8* w, u8* h)
 }
 
 // grid key
+static inline void set_funcs(void);
 static inline void monome_grid_key_write_event(u8 x, u8 y, u8 val) {
   u8* data = (u8*)(&(ev.data));
   data[0] = x;
@@ -535,6 +575,7 @@ static void setup_series(u8 cols, u8 rows) {
   mdesc.rows = rows;
   mdesc.vari = 0;
   mdesc.tilt = 1;
+      use_cdc = 1;
   set_funcs();
   monome_connect_write_event();
   //  monomeConnect = 1;
@@ -557,17 +598,17 @@ static u8 setup_mext(void) {
   while(rxBytes != 6) {
   // FIXME: fuck these delays
   delay_ms(1);
-  ftdi_write(&w, 1);  // query  
+  monome_transport_write(&w, 1);  // query  
 
   delay_ms(1);
-  ftdi_read();
+  monome_transport_read();
 
   delay_ms(1);
   busy = 1;
 
   // print_dbg("\r\n setup request ftdi read; waiting...");
 
-  //  while(ftdi_rx_busy()) {;;}
+  //  while(monome_transport_rx_busy()) {;;}
   while(busy) {
     busy = ftdi_rx_busy();
     // print_dbg("\r\n waiting for transfer complete; busy flag: ");
@@ -616,6 +657,7 @@ static u8 setup_mext(void) {
       return 0; // bail
     }   
     mdesc.tilt = 1;
+      use_cdc = 1;
   }
   else if(*prx == 5) {
     mdesc.device = eDeviceArc;
@@ -632,9 +674,9 @@ static u8 setup_mext(void) {
   // get id
   w = 1;
   delay_ms(1);
-  ftdi_write(&w, 1);
+  monome_transport_write(&w, 1);
   delay_ms(1);
-  ftdi_read();
+  monome_transport_read();
   delay_ms(1);
   busy = 1;
   while(busy) {
@@ -790,7 +832,7 @@ static void read_serial_mext(void) {
 /*   //  static u8 tx[2]; */
 /*   txBuf[0] = 0x20 & ((val > 0) << 4); */
 /*   txBuf[1] = (x << 4) | y; */
-/*   ftdi_write(txBuf, 2); */
+/*   monome_transport_write(txBuf, 2); */
 /* } */
 
 /* static void grid_led_mext(u8 x, u8 y, u8 val) { */
@@ -798,7 +840,7 @@ static void read_serial_mext(void) {
 /*   txBuf[0] = 0x10 | (val > 0); */
 /*   txBuf[1] = x; */
 /*   txBuf[2] = y; */
-/*   ftdi_write(txBuf, 3); */
+/*   monome_transport_write(txBuf, 3); */
 /* } */
 
 // update a whole frame
@@ -834,7 +876,7 @@ static void grid_map_mext( u8 x, u8 y, const u8* data ) {
     data += MONOME_QUAD_LEDS; // skip the rest of the row to get back in target quad
     // ptx++;
   }
-  ftdi_write(txBuf, 32 + 3);
+  monome_transport_write(txBuf, 32 + 3);
 }
 
 
@@ -866,7 +908,7 @@ static void grid_map_40h(u8 x, u8 y, const u8* data) {
     // print_dbg(" row data: 0x");
     // print_dbg_hex(txBuf[(i*2) + 1]);
   }
-  ftdi_write(txBuf, 16);
+  monome_transport_write(txBuf, 16);
 }
 
 static void grid_map_series(u8 x, u8 y, const u8* data) {
@@ -897,7 +939,7 @@ static void grid_map_series(u8 x, u8 y, const u8* data) {
     data += MONOME_QUAD_LEDS; // skip the rest of the row to get back in target quad
     ++ptx;
   }
-  ftdi_write(txBuf, MONOME_QUAD_LEDS + 1);  
+  monome_transport_write(txBuf, MONOME_QUAD_LEDS + 1);  
 }
 
 /* static void grid_map_level_mext(u8 x, u8 y, const u8* data) { */
@@ -923,7 +965,7 @@ static void ring_map_mext(u8 n, u8* data) {
     ptx++;
   }
 
-  ftdi_write(txBuf, 32 + 2);
+  monome_transport_write(txBuf, 32 + 2);
 }
 
 static void set_intense_series(u8 v) {
@@ -937,7 +979,7 @@ encode:   byte 0 = ((id) << 4) | b = 160 + b
 */
   txBuf[0] = 0xa0;
   txBuf[0] |= (v & 0x0f);
-  ftdi_write(txBuf, 1);
+  monome_transport_write(txBuf, 1);
 }
 
 static void set_intense_mext(u8 v) {
