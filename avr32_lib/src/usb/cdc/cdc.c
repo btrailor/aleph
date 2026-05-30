@@ -88,11 +88,18 @@ void cdc_read(void) {
 // respond to connection or disconnection of cdc device.
 // may be called from an interrupt
 void cdc_change(uhc_device_t* dev, u8 plug) {
+  // guard against duplicate events from interrupt flooding
+  static u8 lastPlug = 0xff;
+  if(plug == lastPlug) {
+    return;  // already in this state, ignore duplicate
+  }
+  lastPlug = plug;
+  
   if(plug) {
-    e.type = kEventCdcConnect;
+    e.type = kEventSerialConnect;
   } else {
     cdcConnect = 0;
-    e.type = kEventCdcDisconnect;
+    e.type = kEventSerialDisconnect;
   }
   // posting an event so the main loop can respond
   event_post(&e);
