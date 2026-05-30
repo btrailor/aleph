@@ -47,6 +47,8 @@ CSRCS += \
 	$(ALEPH_AVR32)src/usb.c \
 	$(ALEPH_AVR32)src/usb/ftdi/uhi_ftdi.c \
 	$(ALEPH_AVR32)src/usb/ftdi/ftdi.c \
+	$(ALEPH_AVR32)src/usb/cdc/uhi_cdc.c \
+	$(ALEPH_AVR32)src/usb/cdc/cdc.c \
 	$(ALEPH_AVR32)src/usb/hid/hid.c \
 	$(ALEPH_AVR32)src/usb/hid/uhi_hid.c \
 	$(ALEPH_AVR32)src/usb/midi/uhi_midi.c \
@@ -117,6 +119,7 @@ INC_PATH += \
 	$(ALEPH_AVR32)src/fat_io_lib  \
 	$(ALEPH_AVR32)src/usb     \
 	$(ALEPH_AVR32)src/usb/ftdi   \
+	$(ALEPH_AVR32)src/usb/cdc   \
 	$(ALEPH_AVR32)src/usb/hid \
 	$(ALEPH_AVR32)src/usb/midi   \
 	$(ALEPH_AVR32)src/libfixmath \
