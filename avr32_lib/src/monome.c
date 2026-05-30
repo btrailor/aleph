@@ -13,7 +13,7 @@ static u8 use_cdc = 0;
 static inline void monome_transport_write(u8* data, u8 bytes) {
   if(use_cdc) { cdc_write(data, bytes); } else { ftdi_write(data, bytes); }
 }
-static inline void monome_transport_read(void) {
+extern void monome_transport_read(void) {
   if(use_cdc) { cdc_read(); } else { ftdi_read(); }
 }
 static inline u8 monome_transport_tx_busy(void) {
@@ -287,14 +287,8 @@ u8 check_monome_device_desc(char* mstr, char* pstr, char* sstr) {
     // for CDC devices with "cdc" serial prefix, assume modern grid
     if( strncmp(buf, "cdc", 3) == 0 ) {
       // modern CDC grid - assume 128 (16x8) with mext protocol
-      mdesc.protocol = eProtocolMext;
-      mdesc.device = eDeviceGrid;
-      mdesc.cols = 16;
-      mdesc.rows = 8;
-      mdesc.vari = 1;
-      mdesc.tilt = 1;
-      use_cdc = 1;
-      set_funcs();
+      // Note: cdc_setup() will call monome_setup_mext() which sets up
+      // function pointers and posts connect event. Just return 1 here.
       return 1;
     }
     // so this is probably an extended-protocol device.
@@ -401,6 +395,33 @@ void monome_connect_parse_event_data(u32 data, eMonomeDevice *dev, u8* w, u8* h)
   *dev = (eMonomeDevice)(*pdata++);
   *w = *pdata++;
   *h = *pdata;
+}
+
+// setup monome with CDC transport (non-blocking, uses default size)
+// called from cdc_setup() after opening CDC port
+void monome_setup_mext(void) {
+  print_dbg("\r\n monome_setup_mext: setting CDC function pointers");
+
+  // clear rx state
+  rxBytes = 0;
+
+  // use sane defaults for modern grid (128)
+  // actual size will be determined when grid responds to queries
+  mdesc.device = eDeviceGrid;
+  mdesc.rows = 8;
+  mdesc.cols = 16;
+  mdesc.protocol = eProtocolMext;
+  mdesc.vari = 1;
+  mdesc.tilt = 1;
+  use_cdc = 1;
+
+  print_dbg("\r\n monome_setup_mext: posting connect event, cols=");
+  print_dbg_ulong(mdesc.cols);
+  print_dbg(" rows=");
+  print_dbg_ulong(mdesc.rows);
+
+  set_funcs();
+  monome_connect_write_event();
 }
 
 // grid key

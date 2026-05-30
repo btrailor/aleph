@@ -31,8 +31,8 @@ typedef enum {
   kEventFtdiConnect,
   kEventFtdiDisconnect,
   // connect/disconnect CDC-based devices
-  kEventCdcConnect,
-  kEventCdcDisconnect,
+  kEventSerialConnect,
+  kEventSerialDisconnect,
   /// monome protocol
   kEventMonomeConnect,
   kEventMonomeDisconnect,

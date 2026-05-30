@@ -110,6 +110,12 @@ extern void init_monome(void);
 // check monome device  from FTDI string descriptors
 extern u8 check_monome_device_desc(char* mstr, char* pstr, char* sstr);
 
+// setup monome with CDC transport (non-blocking, uses default size)
+extern void monome_setup_mext(void);
+
+// transport read (triggers CDC or FTDI read)
+extern void monome_transport_read(void);
+
 // check dirty flags and refresh leds
 extern void monome_grid_refresh(void);
 

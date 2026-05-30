@@ -11,6 +11,7 @@
 
 #include "conf_usb_host.h"
 #include "usb_protocol.h"
+#include "usb_protocol_cdc.h"
 #include "uhi.h"
 
 //! Global define which contains standard UHI API for UHC
@@ -39,5 +40,13 @@ extern bool uhi_cdc_write(uint8_t * buf, iram_size_t buf_size,
 
 // get string descriptions
 extern void uhi_cdc_get_strings(char** pManufacturer, char** pProduct, char** pSerial);
+
+// open/close port
+extern bool uhi_cdc_open(uint8_t port, usb_cdc_line_coding_t *configuration);
+extern void uhi_cdc_close(uint8_t port);
+
+// buffered read
+extern iram_size_t uhi_cdc_get_nb_received(uint8_t port);
+extern iram_size_t uhi_cdc_read_buf(uint8_t port, void* buf, iram_size_t size);
 
 #endif // _UHI_CDC_H_

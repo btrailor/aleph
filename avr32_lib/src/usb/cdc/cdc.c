@@ -14,6 +14,7 @@
 #include "cdc.h"
 #include "monome.h"
 #include "uhi_cdc.h"
+#include "usb_protocol_cdc.h"
 
 //---- defines
 
@@ -113,6 +114,20 @@ void cdc_setup(void) {
   u8 result;
   
   print_dbg("\r\n CDC setup routine");
+
+  // open CDC port 0 with default 115200 8N1 config
+  usb_cdc_line_coding_t conf = {
+    .dwDTERate   = 115200,
+    .bCharFormat = CDC_STOP_BITS_1,
+    .bParityType = CDC_PAR_NONE,
+    .bDataBits   = 8
+  };
+
+  if (!uhi_cdc_open(0, &conf)) {
+    print_dbg("\r\n CDC setup: failed to open port");
+    return;
+  }
+
   // set connection flag
   cdcConnect = 1;
 
@@ -130,6 +145,17 @@ void cdc_setup(void) {
   result = check_monome_device_desc(manstr, prodstr, serstr);
   print_dbg("\r\n CDC device check result: ");
   print_dbg_hex(result);
+
+  if(result) {
+    print_dbg("\r\n CDC setup: monome device detected, calling monome_setup_mext");
+    monome_setup_mext();
+  }
+}
+
+// disconnect
+void cdc_disconnect(void) {
+  uhi_cdc_close(0);
+  cdcConnect = 0;
 }
 
 // rx buffer

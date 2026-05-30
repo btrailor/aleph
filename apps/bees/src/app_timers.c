@@ -120,6 +120,9 @@ static void monome_poll_timer_callback(void* obj) {
   // UHC callback spawns appropriate events
 #if BEEKEEP
 #else
+  // start new read transfer (non-blocking)
+  monome_transport_read();
+  // process any data received from previous transfer
   monome_read_serial();
 #endif
 }

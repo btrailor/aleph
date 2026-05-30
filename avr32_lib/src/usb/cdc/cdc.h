@@ -30,6 +30,7 @@ extern void cdc_write(u8* data, u32 bytes);
 extern void cdc_change(uhc_device_t* dev, u8 plug);
 // main-loop setup routine for new device connection
 extern void cdc_setup(void);
+extern void cdc_disconnect(void);
 
 //-- getters
 

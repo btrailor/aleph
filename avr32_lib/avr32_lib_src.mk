@@ -111,6 +111,7 @@ INC_PATH += \
 	common/services/delay                             \
        common/services/usb                                \
        common/services/usb/class/hid                      \
+       common/services/usb/class/cdc                      \
        common/services/usb/uhc                            \
        common/utils                \
 	$(ALEPH_AVR32)	           \

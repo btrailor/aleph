@@ -111,7 +111,7 @@ static void handler_CdcConnect(s32 data) {
   cdc_setup();
 }
 static void handler_CdcDisconnect(s32 data) {
-    cdcConnect = 0;
+    cdc_disconnect();
     event_t e = {.type = kEventMonomeDisconnect };
     event_post(&e);
 }
@@ -175,8 +175,8 @@ static inline void assign_main_event_handlers(void) {
   app_event_handlers[ kEventSwitch7 ]	= &dummy_handler ;
   app_event_handlers[ kEventFtdiConnect ]	= &handler_FtdiConnect ;
   app_event_handlers[ kEventFtdiDisconnect ]	= &handler_FtdiDisconnect ;
-  app_event_handlers[ kEventCdcConnect ]	= &handler_CdcConnect ;
-  app_event_handlers[ kEventCdcDisconnect ]	= &handler_CdcDisconnect ;
+  app_event_handlers[ kEventSerialConnect ]	= &handler_CdcConnect ;
+  app_event_handlers[ kEventSerialDisconnect ]	= &handler_CdcDisconnect ;
   app_event_handlers[ kEventMonomeConnect ]	= &handler_MonomeConnect ;
   app_event_handlers[ kEventMonomeDisconnect ]	= &dummy_handler ;
   app_event_handlers[ kEventMonomePoll ]	= &handler_MonomePoll ;
@@ -326,7 +326,7 @@ void check_startup(void) {
 	event_post(&e);
       } 
       if(cdcConnect) {
-	e.type = kEventCdcConnect;
+	e.type = kEventSerialConnect;
 	event_post(&e);
       } 
       if(monomeConnectMain) {
