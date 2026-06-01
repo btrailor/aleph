@@ -130,10 +130,10 @@ static void midi_poll_timer_callback(void* obj) {
 // monome polling callback
 static void monome_poll_timer_callback(void* obj) {
   // asynchronous, non-blocking read
-  // UHC callback spawns appropriate events
+  // cdc_rx_done() calls monome_read_serial() when transfer completes
 #if BEEKEEP
 #else
-  ftdi_read();
+  monome_transport_read();
 #endif
 }
 
