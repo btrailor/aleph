@@ -27,6 +27,7 @@ static u32 rxBytes = 0;
 static u8 rxBusy = 0;
 static u8 txBusy = 0;
 static event_t e;
+static u8 cdcPlugged = 0;
 
 //------- static functions
 
@@ -36,18 +37,13 @@ static void cdc_rx_done(usb_add_t add,
                         iram_size_t nb) {
   rxBytes = nb;
 
-  if (stat != UHD_TRANS_NOERROR) {
-    print_dbg("\r\n cdc rx transfer callback error. status: 0x");
-    print_dbg_hex((u32)stat);
-    print_dbg(" ; bytes transferred: ");
-    print_dbg_ulong(nb);
-  }
-
-  if (rxBytes) {
+  // FIXME: if the buffer is full, it's a false receive
+  if (rxBytes > 0 && rxBytes < CDC_RX_BUF_SIZE) {
     // check for monome events
     (*monome_read_serial)();
   }
 
+  rxBytes = 0;
   rxBusy = false;
 }
 
@@ -97,6 +93,7 @@ void cdc_change(uhc_device_t* dev, u8 plug) {
   lastPlug = plug;
   
   if(plug) {
+    cdcPlugged = 1;
     e.type = kEventSerialConnect;
   } else {
     cdcConnect = 0;
@@ -134,20 +131,11 @@ void cdc_setup(void) {
   // get string data...
   uhi_cdc_get_strings(&manstr, &prodstr, &serstr);
   
-  print_dbg("\r\n CDC strings: man=");
-  print_dbg(manstr);
-  print_dbg(" prod=");
-  print_dbg(prodstr);
-  print_dbg(" ser=");
-  print_dbg(serstr);
-  
-  //// query if this is a monome device
+  // query if this is a monome device
   result = check_monome_device_desc(manstr, prodstr, serstr);
-  print_dbg("\r\n CDC device check result: ");
-  print_dbg_hex(result);
 
   if(result) {
-    print_dbg("\r\n CDC setup: monome device detected, calling monome_setup_mext");
+    print_dbg("\r\n CDC setup: monome device detected");
     monome_setup_mext();
   }
 }
@@ -175,6 +163,11 @@ extern volatile u8 cdc_rx_busy() {
 
 extern volatile u8 cdc_tx_busy() {
   return txBusy;
+}
+
+// boot-time plug state accessor
+extern u8 cdc_was_plugged(void) {
+  return cdcPlugged;
 }
 
 // device connected flag

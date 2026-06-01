@@ -20,13 +20,13 @@ static inline u8 monome_transport_tx_busy(void) {
   return use_cdc ? cdc_tx_busy() : ftdi_tx_busy();
 }
 static inline u8 monome_transport_rx_busy(void) {
-  return use_cdc ? cdc_rx_busy() : monome_transport_rx_busy();
+  return use_cdc ? cdc_rx_busy() : ftdi_rx_busy();
 }
 static inline u8 monome_transport_rx_bytes(void) {
-  return use_cdc ? cdc_rx_bytes() : monome_transport_rx_bytes();
+  return use_cdc ? cdc_rx_bytes() : ftdi_rx_bytes();
 }
 static inline u8* monome_transport_rx_buf(void) {
-  return use_cdc ? cdc_rx_buf() : monome_transport_rx_buf();
+  return use_cdc ? cdc_rx_buf() : ftdi_rx_buf();
 }
 
 
@@ -400,8 +400,6 @@ void monome_connect_parse_event_data(u32 data, eMonomeDevice *dev, u8* w, u8* h)
 // setup monome with CDC transport (non-blocking, uses default size)
 // called from cdc_setup() after opening CDC port
 void monome_setup_mext(void) {
-  print_dbg("\r\n monome_setup_mext: setting CDC function pointers");
-
   // clear rx state
   rxBytes = 0;
 
@@ -414,11 +412,6 @@ void monome_setup_mext(void) {
   mdesc.vari = 1;
   mdesc.tilt = 1;
   use_cdc = 1;
-
-  print_dbg("\r\n monome_setup_mext: posting connect event, cols=");
-  print_dbg_ulong(mdesc.cols);
-  print_dbg(" rows=");
-  print_dbg_ulong(mdesc.rows);
 
   set_funcs();
   monome_connect_write_event();

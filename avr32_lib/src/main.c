@@ -108,6 +108,9 @@ static void handler_CdcConnect(s32 data) {
   if(!launch) {
     cdcConnect = 1;
   }
+  // delay to let scene loading + bfin_enable() complete before grid activates
+  // prevents feedback loops during net_send_params() that overwhelm DSP
+  delay_ms(50);
   cdc_setup();
 }
 static void handler_CdcDisconnect(s32 data) {
@@ -325,7 +328,7 @@ void check_startup(void) {
 	e.type = kEventFtdiConnect;
 	event_post(&e);
       } 
-      if(cdcConnect) {
+      if(cdc_was_plugged()) {
 	e.type = kEventSerialConnect;
 	event_post(&e);
       } 
