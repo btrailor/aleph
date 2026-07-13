@@ -94,7 +94,7 @@ const u8* param_unpickle(pnode_t* pnode, const u8* src) {
   pnode->data.value = (ParamValue)val;
 
   print_dbg("\r\n [PARAM_DEBUG] unpickling param idx:");
-  print_dbg_ulong(pnode->idx);
+  print_dbg_ulong((u8)val);
   print_dbg(" val: 0x"); 
   print_dbg_hex(val);
   print_dbg(" (dec: ");
