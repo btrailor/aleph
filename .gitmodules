@@ -1,4 +1,4 @@
 [submodule "libavr32"]
 	path = libavr32
 	url = https://github.com/btrailor/libavr32.git
-	branch = cdc-transport
+	branch = aleph-cdc-compat
