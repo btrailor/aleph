@@ -231,3 +231,12 @@ On macOS, [a Docker image](https://hub.docker.com/r/pf0camino/cross-bfin-elf/) c
 `docker run --rm -ti -v ~/src/aleph:/projects/aleph pf0camino/cross-bfin-elf "/bin/bash"`
 
 This starts a container with a shell and the aleph source mounted at /projects/aleph. The build instructions are the same as above from here.
+
+## Branch Model
+
+This repository follows the two-branch model from `GIT_STRATEGY.md`:
+
+- **`main`** — stable, tested releases. Currently tracks upstream `monome/libavr32` `main`.
+- **`develop`** — active integration / next branch. Feature branches start here and merge here first.
+
+Legacy one-off branches (`cdc-support-clean`, `cdc-dev`, `beekeep-m1`, `bees-1.0-dev-v0.8`, `dev`, etc.) have been archived as `archive/*` tags. Use those tags if you need to inspect historical CDC or beekeep work.
