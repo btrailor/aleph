@@ -15,7 +15,6 @@
 #include "events.h"
 #include "midi.h"
 #include "monome.h"
-#include "monome_transport.h"
 #include "timers.h"
 
 // aleph avr32
