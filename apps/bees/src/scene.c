@@ -190,6 +190,104 @@ for(i=0; i<MODULE_NAME_LEN; i++) {
 }
 
 // set current state of system from global RAM buffer
+// Diagnostic: dump the entire network state to serial.
+// Prints every op (index, type id, name), every input (global idx, parent op, op-relative idx),
+// and every output (global idx, parent op, op-relative idx, target input idx).
+// This lets us capture the exact runtime state of a 0.7.1 scene after net_unpickle.
+static void scene_dump_network(void) {
+  u16 i, j, k;
+  op_t* op;
+
+  print_dbg("\r\n\r\n===== NETWORK DUMP =====");
+  print_dbg("\r\nnumOps=");
+  print_dbg_ulong(net->numOps);
+  print_dbg(" numIns=");
+  print_dbg_ulong(net->numIns);
+  print_dbg(" numOuts=");
+  print_dbg_ulong(net->numOuts);
+  print_dbg(" numParams=");
+  print_dbg_ulong(net->numParams);
+  print_dbg("\r\n");
+
+  // Dump operators
+  for(i=0; i<net->numOps; i++) {
+    op = net->ops[i];
+    if(op == NULL) {
+      print_dbg("\r\nOp[");
+      print_dbg_ulong(i);
+      print_dbg("] = NULL");
+      continue;
+    }
+    print_dbg("\r\nOp[");
+    print_dbg_ulong(i);
+    print_dbg("] type=");
+    print_dbg_ulong(op->type);
+    print_dbg(" name=");
+    print_dbg(op->opString);
+    print_dbg(" numIn=");
+    print_dbg_ulong(op->numInputs);
+    print_dbg(" numOut=");
+    print_dbg_ulong(op->numOutputs);
+  }
+
+  // Dump inputs
+  print_dbg("\r\n\r\n--- INPUTS ---");
+  for(i=0; i<net->numIns; i++) {
+    print_dbg("\r\nIn[");
+    print_dbg_ulong(i);
+    print_dbg("] opIdx=");
+    print_dbg_ulong(net->ins[i].opIdx);
+    print_dbg(" opInIdx=");
+    print_dbg_ulong(net->ins[i].opInIdx);
+    // Print the input name from the parent op
+    if(net->ins[i].opIdx >= 0 && net->ops[net->ins[i].opIdx] != NULL) {
+      op = net->ops[net->ins[i].opIdx];
+      print_dbg(" name=");
+      print_dbg(op_in_name(op, net->ins[i].opInIdx));
+    }
+  }
+
+  // Dump outputs and their connection targets
+  print_dbg("\r\n\r\n--- OUTPUTS ---");
+  for(i=0; i<net->numOuts; i++) {
+    print_dbg("\r\nOut[");
+    print_dbg_ulong(i);
+    print_dbg("] opIdx=");
+    print_dbg_ulong(net->outs[i].opIdx);
+    print_dbg(" opOutIdx=");
+    print_dbg_ulong(net->outs[i].opOutIdx);
+    print_dbg(" target=");
+    // target is s16; -1 means unconnected
+    if(net->outs[i].target < 0) {
+      print_dbg("NONE");
+    } else {
+      print_dbg_ulong(net->outs[i].target);
+      // Also show what op/input the target refers to
+      if(net->outs[i].target < net->numIns) {
+        k = net->outs[i].target;
+        print_dbg(" -> Op[");
+        print_dbg_ulong(net->ins[k].opIdx);
+        print_dbg("]/");
+        if(net->ins[k].opIdx >= 0 && net->ops[net->ins[k].opIdx] != NULL) {
+          op = net->ops[net->ins[k].opIdx];
+          print_dbg(op_in_name(op, net->ins[k].opInIdx));
+        } else {
+          print_dbg("?");
+        }
+      }
+    }
+    // Print output name from parent op
+    if(net->outs[i].opIdx >= 0 && net->ops[net->outs[i].opIdx] != NULL) {
+      op = net->ops[net->outs[i].opIdx];
+      print_dbg(" (out: ");
+      print_dbg(op_out_name(op, net->outs[i].opOutIdx));
+      print_dbg(")");
+    }
+  }
+
+  print_dbg("\r\n===== END NETWORK DUMP =====\r\n");
+}
+
 void scene_read_buf(void) {
   /// pointer to serial blob
   const u8* src = (u8*)&(sceneData->pickle);
@@ -332,6 +430,9 @@ void scene_read_buf(void) {
   render_boot("reading network");
   print_dbg("\r\n unpickling network for scene recall...");
   src = net_unpickle(src);
+  
+  // Diagnostic: dump the full network state after unpickling
+  scene_dump_network();
     
   // unpickle presets
   render_boot("reading presets");
