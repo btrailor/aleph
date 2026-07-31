@@ -285,6 +285,59 @@ static void scene_dump_network(void) {
     }
   }
 
+  // Also dump ALL 256 input nodes (0.7.1 reads NET_INS_MAX from pickle)
+  // This reveals ghost ops whose inputs were loaded but aren't in the op list
+  print_dbg("\r\n\r\n--- ALL INPUT NODES (0..255) ---");
+  for(i=0; i<NET_INS_MAX; i++) {
+    if(net->ins[i].opIdx >= 0) {
+      print_dbg("\r\nIn[");
+      print_dbg_ulong(i);
+      print_dbg("] opIdx=");
+      print_dbg_ulong(net->ins[i].opIdx);
+      print_dbg(" opInIdx=");
+      print_dbg_ulong(net->ins[i].opInIdx);
+      // If the opIdx points to a valid op, print its name
+      if(net->ins[i].opIdx < net->numOps && net->ops[net->ins[i].opIdx] != NULL) {
+        op = net->ops[net->ins[i].opIdx];
+        print_dbg(" op=");
+        print_dbg(op->opString);
+        print_dbg(" in=");
+        print_dbg(op_in_name(op, net->ins[i].opInIdx));
+      } else {
+        print_dbg(" GHOST OP");
+      }
+    }
+  }
+
+  // Also dump ALL 256 output nodes
+  print_dbg("\r\n\r\n--- ALL OUTPUT NODES (0..255) ---");
+  for(i=0; i<NET_OUTS_MAX; i++) {
+    if(net->outs[i].opIdx >= 0 || net->outs[i].target >= 0) {
+      print_dbg("\r\nOut[");
+      print_dbg_ulong(i);
+      print_dbg("] opIdx=");
+      print_dbg_ulong(net->outs[i].opIdx);
+      print_dbg(" opOutIdx=");
+      print_dbg_ulong(net->outs[i].opOutIdx);
+      print_dbg(" target=");
+      if(net->outs[i].target < 0) {
+        print_dbg("NONE");
+      } else {
+        print_dbg_ulong(net->outs[i].target);
+      }
+      // If opIdx is valid, print op name
+      if(net->outs[i].opIdx >= 0 && net->outs[i].opIdx < net->numOps && net->ops[net->outs[i].opIdx] != NULL) {
+        op = net->ops[net->outs[i].opIdx];
+        print_dbg(" op=");
+        print_dbg(op->opString);
+        print_dbg(" out=");
+        print_dbg(op_out_name(op, net->outs[i].opOutIdx));
+      } else if(net->outs[i].opIdx >= 0) {
+        print_dbg(" GHOST OP");
+      }
+    }
+  }
+
   print_dbg("\r\n===== END NETWORK DUMP =====\r\n");
 }
 
