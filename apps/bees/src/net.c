@@ -1310,6 +1310,18 @@ u8 net_get_out_play(u32 outIdx) {
 // add a new parameter
 void net_add_param(u32 idx, const ParamDesc * pdesc) {
   s32 val;
+
+#ifdef DYNAMIC_NETWORK_ENABLED
+  // Expand params array if needed. Without this, modules with >64 params
+  // (e.g. waves with 74) overflow the initial allocation and corrupt heap.
+  if(net->numParams >= net->paramsCapacity) {
+    if(dynamic_network_expand_params(net, net->numParams + 1) != 0) {
+      print_dbg("\r\n ERROR: failed to expand params array for new param");
+      return;
+    }
+  }
+#endif
+
   // copy descriptor, hm
   memcpy( &(net->params[net->numParams].desc), (const void*)pdesc, sizeof(ParamDesc) );
 

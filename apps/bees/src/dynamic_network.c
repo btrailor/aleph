@@ -12,7 +12,7 @@
 #define INITIAL_OPS_SIZE    16     
 #define INITIAL_INS_SIZE    64     
 #define INITIAL_OUTS_SIZE   64     
-#define INITIAL_PARAMS_SIZE 64     
+#define INITIAL_PARAMS_SIZE 128     // Bumped from 64: waves module has 74 params
 #define GROWTH_FACTOR       2      
 #define MAX_OPS_LIMIT       256    
 #define MAX_INS_LIMIT       512    
