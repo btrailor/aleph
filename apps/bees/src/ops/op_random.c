@@ -37,13 +37,7 @@ void op_random_init(void* mem) {
   random->super.in_fn = op_random_in_fn;
   random->super.in_val = random->in_val;
   random->super.pickle = (op_pickle_fn) (&op_random_pickle);
-  
-  // Use legacy unpickle for old scenes without SEED input
-  if(legacyRandomFormat) {
-    random->super.unpickle = (op_unpickle_fn) (&op_random_unpickle_legacy);
-  } else {
-    random->super.unpickle = (op_unpickle_fn) (&op_random_unpickle);
-  }
+  random->super.unpickle = (op_unpickle_fn) (&op_random_unpickle);
 
   random->super.out = random->outs;
   random->super.opString = op_random_opstring;

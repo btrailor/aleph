@@ -59,8 +59,6 @@ typedef struct _sceneData {
 
 // global data structure for current scene
 extern sceneData_t* sceneData;
-// flag for connection remapping when loading v0.7 scenes
-extern u8 needsConnectionRemapping;
 
 //----------------------------------------
 //----- external functions
