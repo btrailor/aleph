@@ -1,81 +1,176 @@
-# Building Aleph BEES Firmware
+# Building Aleph Firmware
 
-Verified: 2026-07-13. Any machine with Docker Desktop (macOS/Linux) and the `aleph-builder` image can reproduce a flashable BEES hex from a clean GitHub clone.
+Quick guide for building BEES firmware and DSP modules.
 
-## One-shot fresh-clone build
+---
+
+## Quick Build (Docker)
+
+### Prerequisites
+
+- Docker installed
+- Git submodules initialized: `git submodule update --init --recursive`
+
+### Build BEES Firmware
 
 ```bash
-git clone --branch develop https://github.com/btrailor/aleph.git
-cd aleph
+# Build with Docker
+docker run --rm --platform=linux/amd64 \
+  -v "$(pwd):/aleph" -w /aleph/apps/bees \
+  aleph-builder make
+
+# Output: apps/bees/aleph-bees.hex
+```
+
+### Build DSP Module (example: lines)
+
+```bash
+# Build with Docker
+docker run --rm --platform=linux/amd64 \
+  -v "$(pwd):/aleph" -w /aleph/modules/lines \
+  pf0camino/cross-bfin-elf bash -c \
+  "export PATH=/opt/uClinux/bfin-elf/bin:\$PATH && make"
+
+# Output: modules/lines/lines.ldr
+```
+
+---
+
+## Build Environment Setup
+
+### AVR32 Toolchain (for BEES)
+
+```bash
+# Build Docker image with AVR32 tools
+cd development/environment
+docker build -t aleph-builder .
+```
+
+### Blackfin Toolchain (for DSP modules)
+
+```bash
+# Use pre-built Docker image
+docker pull pf0camino/cross-bfin-elf
+```
+
+---
+
+## Native Build (Advanced)
+
+If you have the toolchains installed locally:
+
+```bash
+# BEES firmware
+cd apps/bees
+make
+
+# DSP module
+cd modules/lines
+make
+```
+
+Required toolchains:
+
+- **AVR32**: avr32-gcc (for controller firmware)
+- **Blackfin**: bfin-elf-gcc (for DSP modules)
+
+---
+
+## Installation to SD Card
+
+After building:
+
+```bash
+# Install to SD card (mounted at /path/to/ALEPH)
+./install.sh /path/to/ALEPH
+
+# Or install specific apps/modules
+./install.sh -a bees -m lines,waves /path/to/ALEPH
+```
+
+---
+
+## Submodule: libavr32
+
+This project uses a custom branch of libavr32 with CDC and compatibility fixes.
+
+**Important**: The submodule is configured to track `aleph-cdc-compat` branch.
+
+```bash
+# Verify submodule state
+cd libavr32
+git branch  # Should show aleph-cdc-compat
+cd ..
+
+# If submodule is in wrong state
 git submodule update --init
-
-# Requires the aleph-builder Docker image (see "Docker image" below)
-docker run --rm --platform linux/amd64 \
-  -v "$(pwd):/host" -w /tmp \
-  aleph-builder:latest bash -c \
-  'cp -r /host /tmp/aleph && cd /tmp/aleph/apps/bees && export PATH=/root/avr32-toolchain-linux/bin:$PATH && make && cp aleph-bees.hex aleph-bees.elf /host/apps/bees/'
 ```
 
-Output: `apps/bees/aleph-bees.hex` (flashable firmware) and `apps/bees/aleph-bees.elf`.
+---
 
-## Why the copy to `/tmp`?
+## Firmware Versions
 
-The AVR32 build writes many small object/dependency files. On macOS arm64 with Docker Desktop running amd64 emulation, writing these files back to a bind-mounted host volume is slow and can silently produce empty files. Building in the container's `/tmp` and copying only the final artifacts back avoids the problem entirely.
+Firmware version is tracked in `apps/bees/version.mk`:
 
-## Docker image
-
-The build depends on the `aleph-builder` image, which contains the AVR32 GCC toolchain and ASF sources.
-
-- **If you already have it**: `docker images | grep aleph-builder`
-- **If you need to build it locally** (one-time, ~15–30 min):
-  ```bash
-  cd development/docker
-  docker build -t aleph-builder .
-  ```
-- **If you have a backup tar**: `docker load -i aleph-builder-backup.tar.gz`
-
-## What changed (2026-07-13)
-
-The `develop` branch now builds reproducibly from a fresh clone. Prior blockers that were fixed:
-
-- `.gitmodules` pointed to `monome/libavr32` at commit `02469a2`, which was no longer fetchable. It now points to `btrailor/libavr32` branch `cdc-transport` at a reachable commit.
-- `apps/aleph_avr32_src.mk` had a duplicate `monome_transport.c`, was missing `adc.c`, and was missing the CDC class include path.
-- `apps/bees/src/param.c` referenced `pnode->idx`, but `pnode_t` no longer has that field.
-- `libavr32/src/usb/cdc/cdc.c` was missing `cdc_disconnect()`, which `avr32/src/main.c` expects.
-
-## Verification
-
-A successful build ends with:
-
-```
-OBJCOPY aleph-bees.hex
-OBJCOPY aleph-bees.bin
+```makefile
+maj = 0
+min = 8
+rev = 3
 ```
 
-and produces:
+Current version: **0.8.3**
+
+---
+
+## Output Files
+
+### BEES Firmware
+
+- **apps/bees/aleph-bees.hex** - Flash to aleph controller
+- **apps/bees/aleph-bees.elf** - Debug symbols
+
+### DSP Modules
+
+- **modules/MODULE_NAME/MODULE_NAME.ldr** - Loadable DSP module
+- **modules/MODULE_NAME/MODULE_NAME.dsc** - Module descriptor
+- **modules/MODULE_NAME/MODULE_NAME.lab** - Module label
+
+---
+
+## Troubleshooting
+
+### "libavr32 submodule not found"
 
 ```bash
-$ ls -lh apps/bees/aleph-bees.hex
--rw-r--r--  1 user  group  490K Jul 13 11:03 apps/bees/aleph-bees.hex
+git submodule update --init --recursive
 ```
 
-The hex is ready to copy to the Aleph SD card `app/` folder or flash with an AVR32 programmer.
-
-## Branch notes
-
-- Use branch `develop` for current work.
-- Do **not** use `main` for builds until Phase A is extended to it; `main` still pins an older libavr32 state that is missing the CDC transport files.
-
-## Flashing
-
-Copy the hex to the Aleph SD card:
+### "avr32-gcc: command not found"
 
 ```bash
-cp apps/bees/aleph-bees.hex /Volumes/ALEPH/app/
+# Use Docker build method instead
+docker run --rm -v "$(pwd):/aleph" -w /aleph/apps/bees aleph-builder make
 ```
 
-or place it in the `app/` folder of the SD card and power-cycle the Aleph.
+### "File not found" errors during build
 
-## Scene-load sanity check
+Check that you're using correct Docker platform:
 
-After flashing, load a **scene created on this firmware** (not a legacy v0.7.x scene) and confirm the parameter network does not scramble. Legacy grid scenes may mis-wire due to operator input/output count drift across the 0.7→0.8 transition; that migration is tracked separately.
+```bash
+docker run --platform=linux/amd64 ...
+```
+
+---
+
+## More Information
+
+For detailed build documentation, troubleshooting, and development setup, see the `develop` branch:
+
+- `development/docs/building/BUILDING_BEES_GUIDE.md` - Comprehensive build guide
+- `development/docs/getting-started/GETTING_STARTED.md` - Development setup
+- `development/docs/workflow/` - Git workflow and daily development practices
+
+---
+
+**Last Updated**: January 11, 2026  
+**Firmware Version**: 0.8.3
