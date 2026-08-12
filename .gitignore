@@ -51,3 +51,14 @@ check_scene_version.py
 parse_scene.py
 scan_scene.py
 cleanup-duplicates.sh
+
+# iCloud conflict artifacts (never track these)
+* 2.*
+* 3.*
+*.bak
+*conflicted*
+
+# Stale Beekeep app bundles (tracked canonical copies exist elsewhere)
+utils/beekeep/beekeep 2.app/
+utils/beekeep/beekeep-m1 2.app/
+utils/beekeep-canvas-dev/archive/old-builds/Beekeep 2.app/
