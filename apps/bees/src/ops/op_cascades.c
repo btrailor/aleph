@@ -249,8 +249,14 @@ static void op_cascades_trigger(op_cascades_t *op, u8 n) {
     else if(op->rules[n] == 5) {  // rnd
       op->points[op->rule_dests[n]] = rnd() % op->XSIZE;
       
+      // NOTE: print_dbg() is a blocking UART write (~11ms per call at
+      // 115200 baud) inside the cascade trigger path. It stalls the main
+      // loop and also perturbs the timing these rules depend on.
+      // Gated behind DEBUG_MONOME (default 0). See apps/bees/config.mk.
+#if DEBUG_MONOME
       print_dbg("\r\n op_cascades >>>>>>>>>>>>>>>>>>>> RANDOM: ");
       print_dbg_hex(op->points[op->rule_dests[n]]);
+#endif
       // print_dbg_hex(rnd() % 11);
 
       op->positions[op->rule_dests[n]] = op->points[op->rule_dests[n]];
@@ -264,8 +270,12 @@ static void op_cascades_trigger(op_cascades_t *op, u8 n) {
       else if(op->points[op->rule_dests[n]] > (op->XSIZE-1)) op->points[op->rule_dests[n]] = op->XSIZE-1;
       op->positions[op->rule_dests[n]] = op->points[op->rule_dests[n]];  
 
+      // NOTE: see RANDOM above -- blocking UART write in the trigger path.
+      // Gated behind DEBUG_MONOME (default 0). See apps/bees/config.mk.
+#if DEBUG_MONOME
       print_dbg("\r\n op_cascades >>>>>>>>>>>>>>>>>>>> WANDER: ");
       print_dbg_hex(op->points[op->rule_dests[n]]);   
+#endif
     }
     else if(op->rules[n] == 7) {  // return
       op->points[op->rule_dests[n]] = op->points_save[op->rule_dests[n]];

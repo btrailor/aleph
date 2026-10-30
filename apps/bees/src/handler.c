@@ -122,6 +122,12 @@ static void handle_MonomeGridKey(s32 data) {
   /// FIXME: we need to differentiate between multiple devices.
   /// of course, first we need USB hub support.
   
+  // NOTE: print_dbg() is a blocking UART write. These 7 calls emitted ~131
+  // bytes per grid key event (~11.4ms at 115200 baud), stalling the main loop
+  // -- which also drives the AVR32<->Blackfin SPI transport -- long enough to
+  // cause audible audio dropouts during fast grid gestures.
+  // Gated behind DEBUG_MONOME (default 0). See apps/bees/config.mk.
+#if DEBUG_MONOME
   print_dbg("\r\n monome grid key event in BEES.");
   print_dbg("\r\n monomeOpFocus: 0x");
   print_dbg_hex((u32)monomeOpFocus);
@@ -129,6 +135,7 @@ static void handle_MonomeGridKey(s32 data) {
   print_dbg_hex((u32)(monomeOpFocus->op));
   print_dbg("; monome_grid_key_handler: 0x");
   print_dbg_hex((u32)(monome_grid_key_handler));
+#endif
 
   (*monome_grid_key_handler)(monomeOpFocus, data);
 }

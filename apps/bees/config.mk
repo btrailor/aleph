@@ -161,6 +161,20 @@ CFLAGS += -DDYNAMIC_NETWORK_ENABLED
 # Enable dynamic flash buffer allocation  
 CFLAGS += -DDYNAMIC_FLASH_BUFFER_ENABLED
 
+# Debug instrumentation in performance-critical paths (monome grid key events,
+# operator trigger paths). print_dbg() is a BLOCKING UART write (~11ms per
+# grid key event at 115200 baud); leaving it enabled in the key-event handler
+# stalls the main loop -- which also drives the AVR32<->Blackfin SPI transport
+# -- long enough to cause audible audio dropouts during fast grid gestures.
+#
+# Set to 1 to re-enable the debug output. Default 0 for release builds.
+DEBUG_MONOME = 0
+ifeq ($(DEBUG_MONOME),1)
+  CFLAGS += -DDEBUG_MONOME=1
+else
+  CFLAGS += -DDEBUG_MONOME=0
+endif
+
 # debug:
 # OPTIMIZATION = -Og
 OPTIMIZATION = -O2
