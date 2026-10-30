@@ -115,12 +115,13 @@ static void handler_CdcConnect(s32 data) {
     // print_dbg("\r\n got CDC monome device connection, saving flag for app launch");
     cdcConnect = 1;
   }
-  cdc_setup();
+  // Upstream libavr32 has no cdc_setup(); monome_setup_mext() sets up the
+  // CDC transport and identifies the device with a live protocol query.
+  monome_setup_mext();
 }
 
 static void handler_CdcDisconnect(s32 data) {
     cdcConnect = 0;
-    cdc_disconnect();
     /// CDC disconnection - assume this is monome disconnect
     event_t e = {.type = kEventMonomeDisconnect };
     event_post(&e);

@@ -134,7 +134,9 @@ static void monome_poll_timer_callback(void* obj) {
   // UHC callback spawns appropriate events
 #if BEEKEEP
 #else
-  monome_transport_read();
+  // Upstream libavr32 exposes the transport as a function pointer
+  // (serial_read), set to &cdc_read or &ftdi_read at device-setup time.
+  serial_read();
 #endif
 }
 
