@@ -62,3 +62,7 @@ cleanup-duplicates.sh
 utils/beekeep/beekeep 2.app/
 utils/beekeep/beekeep-m1 2.app/
 utils/beekeep-canvas-dev/archive/old-builds/Beekeep 2.app/
+
+# Preserve known-good firmware baselines under artifacts/ (these ARE tracked)
+!artifacts/
+!artifacts/**
