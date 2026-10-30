@@ -42,8 +42,39 @@ the code still compiles.
 |---|---|---|---|
 | B1 | `monome_transport_read()` polls the CDC path | Grid data received | Keys register when pressed |
 | B2 | `monome_transport_write()` sends LEDs over CDC | Grid LEDs light | LEDs illuminate |
-| B3 | FTDI path still works (old grid) | FTDI grid unaffected | Test with a classic FTDI grid if available |
+| B3 | FTDI path still works (old grid) | FTDI grid unaffected | **NO FTDI HARDWARE AVAILABLE** - verify by code review against the FTDI items in section G below |
 | B4 | FTDI RX callback does **not** fire for CDC devices | No cross-talk | `ftdi.c` guards on `ftdiConnect` |
+
+### FTDI preservation (no hardware - code review only)
+
+**Constraint (Brett, 2026-10-30):** no classic FTDI grid is available for
+testing, but FTDI support **must not regress** - other Aleph users still use
+those grids. The FTDI path must therefore be preserved **by construction**:
+port our implementation rather than replacing it with upstream's CDC-only
+path.
+
+| # | Behavior | Where | Must remain | Verified by |
+|---|---|---|---|---|
+| F1 | FTDI transport reachable via `use_cdc == 0` dispatch | `src/monome.c:14-29` | `monome_transport_write` -> `ftdi_write`, `monome_transport_read` -> `ftdi_read`, `monome_transport_tx_busy` -> `ftdi_tx_busy`, `monome_transport_rx_buf` -> `ftdi_rx_buf` | code review |
+| F1b | Protocol-level read/write still dispatched by protocol | `src/monome.c:167-171, 556` | `readSerialFuncs[]` = 40h / series / mext, assigned in `set_funcs()` | code review |
+| F2 | `ftdi_setup()` still reachable from `handler_FtdiConnect()` | `aleph avr32/src/main.c` | FTDI connect path intact | code review |
+| F3 | FTDI driver still in `USB_HOST_UHI` **and ordered before CDC** | `conf/aleph/conf_usb_host.h` | `UHI_FTDI, UHI_CDC, UHI_HID, UHI_MIDI` | code review |
+| F4 | FTDI USB **string descriptors parsed as UTF-16** | `src/monome.c` (`isUnicode`) | `mstr[i*2]` for FTDI, `mstr[i]` for CDC | code review |
+| F5 | FTDI RX callback guard intact | `src/usb/ftdi/ftdi.c:54` | guarded on `ftdiConnect` | code review |
+| F6 | FTDI-only device types still detected: `a40h`, `m64-`, `m128-`, `m256-` | `src/monome.c` `check_monome_device_desc()` | `setup_40h` / `setup_series` paths | code review |
+| F7 | `use_cdc` NOT set on the shared `setup_mext()` path | `src/monome.c` (~line 676) | Comment: `// use_cdc = 1; // REMOVED: setup_mext is used for both FTDI and CDC grids`. An FTDI grid reaching the shared mext path must stay on FTDI. **Do not "fix" this.** | code review |
+| F8 | `monome_transport_*` helpers dispatch to `ftdi_*` when `use_cdc == 0` | `src/monome.c:13-29` | dual transport preserved | code review |
+
+**Note on our fork's mechanism:** our fork does **not** use upstream's
+`serial_read = &ftdi_read` function-pointer style. It uses a `use_cdc` flag
+with inline dispatch in `monome_transport_*` helpers (`src/monome.c:13-29`),
+plus protocol-level dispatch via `readSerialFuncs[]` (`src/monome.c:167-171`).
+**This is a deliberate difference from upstream and must be preserved.**
+
+**F7 is the highest-risk item.** Upstream's design points `setup_mext` at CDC
+function pointers unconditionally, which would silently break any FTDI grid
+that reaches the shared mext path. Porting upstream's `monome.c` wholesale
+would reintroduce this. The transport abstraction must be carried over intact.
 
 ## C. Grid operator behavior
 
