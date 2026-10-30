@@ -136,6 +136,10 @@ void op_cascades_init(void* mem) {
   op->edit_row = op->key_count = op->mode = op->prev_mode = 0;
 
   op->size = monome_size_x();
+  // XSIZE drives the horizontal bounds of the cascade (rule destinations,
+  // random rule range). Derive it from the detected grid width so it stays
+  // correct even if the scene's stored 'size' field is stale.
+  op->XSIZE = op->size;
   op->dummy = 0;
 
   s8 positions_init[8] = {3,1,2,2,3,3,5,7};
@@ -183,11 +187,20 @@ static void op_cascades_in_focus(op_cascades_t* op, const io_t v) {
 }
 
 static void op_cascades_in_size(op_cascades_t* op, const io_t v) {
-  if(v < 9) op->size = 8;
-  else op->size = 16;
-
-  // FIXME: auto-detect size, this doesn't get set in unpickling
-  op->XSIZE = op->size;
+  // The detected grid width is authoritative. The network SIZE input is often
+  // not a width at all -- scenes commonly wire an ENC's VAL output (a clock
+  // or trigger value) here, which previously clamped every cascade to the
+  // first 8 columns regardless of the real grid.
+  //
+  // Only honour the input when it names a width this hardware could have.
+  u8 detected = monome_size_x();
+  if((v == 8 || v == 16) && (v == detected || detected == 0)) {
+    op->size = v;
+    op->XSIZE = v;
+  } else {
+    op->size = detected;
+    op->XSIZE = detected;
+  }
 }
 
 static void op_cascades_in_step(op_cascades_t* op, const io_t v) {

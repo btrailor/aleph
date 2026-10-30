@@ -138,8 +138,18 @@ static void op_step_in_focus(op_step_t* op, const io_t v) {
 }
 
 static void op_step_in_size(op_step_t* op, const io_t v) {
-  if(v < 9) op->size = 8;
-  else op->size = 16;
+  // The detected grid width is authoritative. The network SIZE input is often
+  // not a width at all -- scenes commonly wire an ENC's VAL output (a clock
+  // or trigger value) here, which would clamp the step sequencer to the first
+  // 8 columns regardless of the real grid.
+  //
+  // Only honour the input when it names a width this hardware could have.
+  u8 detected = monome_size_x();
+  if((v == 8 || v == 16) && (v == detected || detected == 0)) {
+    op->size = v;
+  } else {
+    op->size = detected;
+  }
 }
 
 static void op_step_in_step(op_step_t* op, const io_t v) {
